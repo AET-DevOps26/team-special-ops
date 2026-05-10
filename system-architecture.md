@@ -43,7 +43,8 @@ https://apollon.aet.cit.tum.de/576d2a13-3291-4a6f-92ca-62f99afbd548?view=COLLABO
 ### 1.3 Component Diagram (Top-level Architecture)
 
 https://apollon.aet.cit.tum.de/b0b5e19f-b63a-4df2-a5e4-7b46dd9238bb?view=COLLABORATE
-[Component Diagram](./diagrams/Component%20Diagram.png)
+
+![Component Diagram](./diagrams/Component%20Diagram.png)
 
 Vector DB (Weaviate) sitting next to the GenAI Service,
 storing chunked content with metadata. Will be added when RAG is introduced.
