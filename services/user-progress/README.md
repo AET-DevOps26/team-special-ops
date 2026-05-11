@@ -2,20 +2,20 @@
 
 Spring Boot service for authentication and watch progress.
 
-## Run
+## Run (from `services/` parent)
 
-    ./mvnw spring-boot:run
+    ./mvnw -pl user-progress spring-boot:run
 
-Service listens on http://localhost:8081
+Listens on http://localhost:8081
 
 - Health: http://localhost:8081/user-progress/health
 - Swagger UI: http://localhost:8081/swagger-ui.html
 - Actuator health: http://localhost:8081/actuator/health
 
-## Test
+## Test (from `services/` parent)
 
-    ./mvnw verify
+    ./mvnw -pl user-progress verify
 
-Regenerate stubs from the OpenAPI spec before building:
+## Regenerate API stubs (from repo root)
 
-    ../../api/scripts/gen-all.sh
+    ./api/scripts/gen-all.sh java

@@ -2,20 +2,20 @@
 
 Spring Boot service for shows, episodes, and per-episode summaries.
 
-## Run
+## Run (from `services/` parent)
 
-    ./mvnw spring-boot:run
+    ./mvnw -pl catalog spring-boot:run
 
-Service listens on http://localhost:8082
+Listens on http://localhost:8082
 
 - Health: http://localhost:8082/catalog/health
 - Swagger UI: http://localhost:8082/swagger-ui.html
 - Actuator health: http://localhost:8082/actuator/health
 
-## Test
+## Test (from `services/` parent)
 
-    ./mvnw verify
+    ./mvnw -pl catalog verify
 
-Regenerate stubs from the OpenAPI spec before building:
+## Regenerate API stubs (from repo root)
 
-    ../../api/scripts/gen-all.sh
+    ./api/scripts/gen-all.sh java

@@ -69,8 +69,10 @@ That's it. After this, you can run any service in dev (see Quickstart below).
 > services individually.
 
 ```bash
-# A Spring Boot service (example: catalog)
-cd services/catalog && ./mvnw spring-boot:run
+# A Spring Boot service (example: catalog) — run from services/ parent
+cd services && ./mvnw -pl catalog spring-boot:run
+
+# All three Spring services at once: cd services && ./mvnw verify
 
 # The GenAI service
 cd services/genai && uv sync --extra dev && uv run uvicorn genai.main:app --port 8084 --reload

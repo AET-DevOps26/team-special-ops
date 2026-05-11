@@ -3,20 +3,20 @@
 Spring Boot service orchestrating Q&A: receives a question, fetches allowed
 episode summaries, calls the GenAI service, persists Q&A history.
 
-## Run
+## Run (from `services/` parent)
 
-    ./mvnw spring-boot:run
+    ./mvnw -pl chat spring-boot:run
 
-Service listens on http://localhost:8083
+Listens on http://localhost:8083
 
 - Health: http://localhost:8083/chat/health
 - Swagger UI: http://localhost:8083/swagger-ui.html
 - Actuator health: http://localhost:8083/actuator/health
 
-## Test
+## Test (from `services/` parent)
 
-    ./mvnw verify
+    ./mvnw -pl chat verify
 
-Regenerate stubs from the OpenAPI spec before building:
+## Regenerate API stubs (from repo root)
 
-    ../../api/scripts/gen-all.sh
+    ./api/scripts/gen-all.sh java

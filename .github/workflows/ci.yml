@@ -49,8 +49,8 @@ jobs:
       - name: Regenerate Java stubs from OpenAPI spec
         run: ./api/scripts/gen-all.sh java
       - name: Build + test + lint
-        working-directory: services/${{ matrix.service }}
-        run: ./mvnw -B verify
+        working-directory: services
+        run: ./mvnw -B -pl ${{ matrix.service }} verify
 
   genai:
     needs: spec-lint
