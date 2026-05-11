@@ -21,6 +21,7 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
+          cache-dependency-path: web-client/pnpm-lock.yaml
       - run: pnpm --package=@redocly/cli@latest dlx redocly lint api/openapi.yaml
 
   java-services:
@@ -44,8 +45,9 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-      - name: Regenerate stubs from OpenAPI spec
-        run: ./api/scripts/gen-all.sh
+          cache-dependency-path: web-client/pnpm-lock.yaml
+      - name: Regenerate Java stubs from OpenAPI spec
+        run: ./api/scripts/gen-all.sh java
       - name: Build + test + lint
         working-directory: services/${{ matrix.service }}
         run: ./mvnw -B verify
@@ -59,15 +61,8 @@ jobs:
         with:
           python-version: '3.12'
       - uses: astral-sh/setup-uv@v3
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-      - name: Regenerate client from OpenAPI spec
-        run: ./api/scripts/gen-all.sh
+      - name: Regenerate Python client from OpenAPI spec
+        run: ./api/scripts/gen-all.sh python
       - name: Sync dependencies
         working-directory: services/genai
         run: uv sync --extra dev
@@ -92,8 +87,9 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
+          cache-dependency-path: web-client/pnpm-lock.yaml
       - name: Regenerate TS types from OpenAPI spec
-        run: ./api/scripts/gen-all.sh
+        run: ./api/scripts/gen-all.sh ts
       - name: Install deps
         working-directory: web-client
         run: pnpm install --frozen-lockfile

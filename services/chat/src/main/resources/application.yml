@@ -4,9 +4,3 @@ server:
 spring:
   application:
     name: chat
-
-springdoc:
-  swagger-ui:
-    path: /swagger-ui.html
-  api-docs:
-    path: /v3/api-docs
