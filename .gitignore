@@ -1,0 +1,37 @@
+# Generated code (regen via api/scripts/gen-all.sh)
+services/*/generated/
+web-client/src/api/types.ts
+openapitools.json
+
+# Java
+target/
+*.class
+.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.properties
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Node / frontend
+node_modules/
+dist/
+.vite/
+.eslintcache
+coverage/
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local

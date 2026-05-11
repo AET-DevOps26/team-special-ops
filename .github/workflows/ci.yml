@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  spec-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm --package=@redocly/cli@latest dlx redocly lint api/openapi.yaml
+
+  java-services:
+    needs: spec-lint
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [user-progress, catalog, chat]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Regenerate stubs from OpenAPI spec
+        run: ./api/scripts/gen-all.sh
+      - name: Build + test + lint
+        working-directory: services/${{ matrix.service }}
+        run: ./mvnw -B verify
+
+  genai:
+    needs: spec-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v3
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Regenerate client from OpenAPI spec
+        run: ./api/scripts/gen-all.sh
+      - name: Sync dependencies
+        working-directory: services/genai
+        run: uv sync --extra dev
+      - name: Lint
+        working-directory: services/genai
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+      - name: Test
+        working-directory: services/genai
+        run: uv run pytest -v
+
+  web-client:
+    needs: spec-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Regenerate TS types from OpenAPI spec
+        run: ./api/scripts/gen-all.sh
+      - name: Install deps
+        working-directory: web-client
+        run: pnpm install --frozen-lockfile
+      - name: Lint
+        working-directory: web-client
+        run: pnpm lint
+      - name: Test
+        working-directory: web-client
+        run: pnpm test
+      - name: Build
+        working-directory: web-client
+        run: pnpm build

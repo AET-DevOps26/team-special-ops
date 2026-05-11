@@ -1,0 +1,88 @@
+openapi: 3.1.0
+info:
+  title: Spoiler-Safe TV Q&A API
+  version: 0.1.0
+  description: |
+    Single source of truth. v0 contains only health endpoints; real endpoints
+    are added in subsequent backlog items.
+
+servers:
+  - url: http://localhost:8081
+    description: user-progress (local)
+  - url: http://localhost:8082
+    description: catalog (local)
+  - url: http://localhost:8083
+    description: chat (local)
+  - url: http://localhost:8084
+    description: genai (local)
+
+paths:
+  /user-progress/health:
+    get:
+      tags: [user-progress]
+      operationId: userProgressHealth
+      summary: Health check
+      responses:
+        '200':
+          $ref: '#/components/responses/Health'
+
+  /catalog/health:
+    get:
+      tags: [catalog]
+      operationId: catalogHealth
+      summary: Health check
+      responses:
+        '200':
+          $ref: '#/components/responses/Health'
+
+  /chat/health:
+    get:
+      tags: [chat]
+      operationId: chatHealth
+      summary: Health check
+      responses:
+        '200':
+          $ref: '#/components/responses/Health'
+
+  /genai/health:
+    get:
+      tags: [genai]
+      operationId: genaiHealth
+      summary: Health check
+      responses:
+        '200':
+          $ref: '#/components/responses/Health'
+
+components:
+  responses:
+    Health:
+      description: Service is up
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/HealthStatus'
+
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status, service]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        service:
+          type: string
+          example: catalog
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: VALIDATION_FAILED
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
