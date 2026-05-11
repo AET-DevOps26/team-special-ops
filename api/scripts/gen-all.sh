@@ -11,10 +11,13 @@ cd "$(dirname "$0")/../.."
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
-# Lint always runs first — it's a fast safety net (~5s) and the spec is the
-# input to every generator, so a broken spec should fail loud before codegen.
-echo "→ Validating OpenAPI spec..."
-pnpm --package=@redocly/cli@latest dlx redocly lint api/openapi.yaml
+# Lint runs in "all" mode (local dev) as a safety net. CI's spec-lint job
+# already gates downstream targets, so it's redundant — and not every CI job
+# has pnpm installed.
+if [[ "$target" == "all" ]]; then
+  echo "→ Validating OpenAPI spec..."
+  pnpm --package=@redocly/cli@latest dlx redocly lint api/openapi.yaml
+fi
 
 if [[ "$target" == "java" || "$target" == "all" ]]; then
   if have java; then
