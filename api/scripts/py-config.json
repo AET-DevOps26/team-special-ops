@@ -1,0 +1,4 @@
+{
+  "project_name_override": "genai-api-client",
+  "package_name_override": "genai_api_client"
+}
