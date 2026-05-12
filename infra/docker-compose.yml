@@ -82,9 +82,6 @@ services:
       dockerfile: web-client/Dockerfile
     ports:
       - "8080:80"
-    depends_on:
-      postgres:
-        condition: service_healthy
 
 volumes:
   postgres_data:

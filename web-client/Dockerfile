@@ -16,7 +16,7 @@ RUN pnpm install --frozen-lockfile
 COPY web-client .
 COPY api/openapi.yaml /build/api/openapi.yaml
 RUN mkdir -p src/api \
-  && pnpm dlx openapi-typescript@latest /build/api/openapi.yaml -o src/api/types.ts
+  && pnpm exec openapi-typescript /build/api/openapi.yaml -o src/api/types.ts
 RUN pnpm build
 
 # --- Runtime: nginx + static assets only ---

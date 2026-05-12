@@ -22,7 +22,7 @@ jobs:
           node-version: 20
           cache: pnpm
           cache-dependency-path: web-client/pnpm-lock.yaml
-      - run: pnpm --package=@redocly/cli@latest dlx redocly lint api/openapi.yaml
+      - run: pnpm --package=@redocly/cli@2.30.5 dlx redocly lint api/openapi.yaml
 
   java-services:
     needs: spec-lint
