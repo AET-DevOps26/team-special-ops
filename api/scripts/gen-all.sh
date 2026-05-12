@@ -16,7 +16,7 @@ have() { command -v "$1" >/dev/null 2>&1; }
 # has pnpm installed.
 if [[ "$target" == "all" ]]; then
   echo "→ Validating OpenAPI spec..."
-  pnpm --package=@redocly/cli@latest dlx redocly lint api/openapi.yaml
+  pnpm --package=@redocly/cli@2.30.5 dlx redocly lint api/openapi.yaml
 fi
 
 if [[ "$target" == "java" || "$target" == "all" ]]; then
@@ -33,7 +33,7 @@ if [[ "$target" == "java" || "$target" == "all" ]]; then
     for svc in user-progress catalog chat; do
       pkg="$(java_pkg_for "$svc")"
       rm -rf "services/$svc/generated"
-      pnpm dlx @openapitools/openapi-generator-cli@latest generate \
+      pnpm dlx @openapitools/openapi-generator-cli@2.32.0 generate \
         -i api/openapi.yaml \
         -g spring \
         -o "services/$svc/generated" \
@@ -62,7 +62,7 @@ if [[ "$target" == "ts" || "$target" == "all" ]]; then
   if have pnpm; then
     echo "→ Generating TypeScript types for web-client..."
     mkdir -p web-client/src/api
-    pnpm dlx openapi-typescript@latest api/openapi.yaml \
+    pnpm dlx openapi-typescript@7.13.0 api/openapi.yaml \
       -o web-client/src/api/types.ts
   else
     echo "⚠ skipping TS codegen (pnpm not installed)"
