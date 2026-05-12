@@ -1,0 +1,90 @@
+# Full local stack: Postgres + Spring services + GenAI + static web client.
+# Run from repository root:
+#   docker compose -f infra/docker-compose.yml up --build
+#
+# Optional: copy infra/env.example to infra/.env and adjust values.
+
+name: team-special-ops
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tso}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tso}
+      POSTGRES_DB: ${POSTGRES_DB:-tso}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  user-progress:
+    build:
+      context: ..
+      dockerfile: services/Dockerfile.spring
+      args:
+        SERVICE: user-progress
+        JAVA_PKG: userprogress
+        APP_PORT: 8081
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  catalog:
+    build:
+      context: ..
+      dockerfile: services/Dockerfile.spring
+      args:
+        SERVICE: catalog
+        JAVA_PKG: catalog
+        APP_PORT: 8082
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  chat:
+    build:
+      context: ..
+      dockerfile: services/Dockerfile.spring
+      args:
+        SERVICE: chat
+        JAVA_PKG: chat
+        APP_PORT: 8083
+    ports:
+      - "8083:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  genai:
+    build:
+      context: ../services/genai
+      dockerfile: Dockerfile
+    ports:
+      - "8084:8084"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web-client:
+    build:
+      context: ..
+      dockerfile: web-client/Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

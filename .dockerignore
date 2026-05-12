@@ -1,0 +1,29 @@
+# Git / IDE
+.git
+.github
+.idea
+.vscode
+*.iml
+
+# Docs (not needed to build images)
+docs
+
+# Build outputs & caches (rebuilt inside Docker)
+**/target
+**/node_modules
+**/dist
+**/.vite
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/coverage
+
+# Generated API artifacts (regenerated in Java / web build stages)
+services/*/generated
+web-client/src/api/types.ts
+openapitools.json
+
+# Env secrets must never enter the build context
+.env
+.env.*

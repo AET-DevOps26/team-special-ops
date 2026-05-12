@@ -1,0 +1,53 @@
+# syntax=docker/dockerfile:1
+#
+# Multi-stage: build (JDK + Maven + codegen) → runtime (JRE only, non-root).
+# Build from repository root:
+#   docker build -f services/Dockerfile.spring --build-arg SERVICE=user-progress --build-arg JAVA_PKG=userprogress --build-arg APP_PORT=8081 -t tso-user-progress .
+#   docker build -f services/Dockerfile.spring --build-arg SERVICE=catalog --build-arg JAVA_PKG=catalog --build-arg APP_PORT=8082 -t tso-catalog .
+#   docker build -f services/Dockerfile.spring --build-arg SERVICE=chat --build-arg JAVA_PKG=chat --build-arg APP_PORT=8083 -t tso-chat .
+
+ARG SERVICE=user-progress
+ARG JAVA_PKG=userprogress
+ARG APP_PORT=8081
+
+# --- Build: compilers, Maven, OpenAPI generator (not shipped to runtime) ---
+FROM maven:3.9.9-eclipse-temurin-21-jammy AS builder
+ARG SERVICE
+ARG JAVA_PKG
+WORKDIR /build
+
+RUN curl -fsSL -o /opt/openapi-generator-cli.jar \
+  https://repo1.maven.org/maven2/org/openapitools/openapi-generator-cli/7.12.0/openapi-generator-cli-7.12.0.jar
+
+COPY api/openapi.yaml api/openapi.yaml
+COPY services/pom.xml services/mvnw services/mvnw.cmd services/
+COPY services/.mvn/ services/.mvn/
+COPY services/user-progress/ services/user-progress/
+COPY services/catalog/ services/catalog/
+COPY services/chat/ services/chat/
+
+RUN java -jar /opt/openapi-generator-cli.jar generate \
+  -i api/openapi.yaml \
+  -g spring \
+  -o "services/${SERVICE}/generated" \
+  --additional-properties="interfaceOnly=true,useTags=true,apiPackage=com.tso.${JAVA_PKG}.api,modelPackage=com.tso.${JAVA_PKG}.model,useSpringBoot3=true"
+
+RUN cd services && chmod +x mvnw \
+  && ./mvnw -B --no-transfer-progress -pl "${SERVICE}" verify -DskipTests
+
+RUN set -eux; \
+  JAR="$(find "/build/services/${SERVICE}/target" -maxdepth 1 -name '*.jar' ! -name '*-sources.jar' ! -name 'original-*.jar' | head -n1)"; \
+  test -n "$JAR"; \
+  cp "$JAR" /build/application.jar
+
+# --- Runtime: JRE + app JAR only ---
+FROM eclipse-temurin:21-jre-jammy AS runtime
+ARG APP_PORT=8081
+RUN groupadd --gid 1000 app \
+  && useradd --uid 1000 --gid app --shell /usr/sbin/nologin --no-create-home app
+WORKDIR /app
+COPY --from=builder --chown=1000:1000 /build/application.jar /app/application.jar
+USER 1000:1000
+EXPOSE ${APP_PORT}
+ENV JAVA_OPTS=""
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/application.jar"]
