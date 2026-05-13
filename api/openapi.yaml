@@ -17,6 +17,60 @@ servers:
     description: genai (local)
 
 paths:
+  /user-progress/auth/signup:
+    post:
+      tags: [user-progress]
+      operationId: signup
+      summary: Create a new user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupRequest'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/Error'
+        '409':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /user-progress/auth/login:
+    post:
+      tags: [user-progress]
+      operationId: login
+      summary: Authenticate user and get JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /user-progress/health:
     get:
       tags: [user-progress]
@@ -54,6 +108,13 @@ paths:
           $ref: '#/components/responses/Health'
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT bearer token. Obtain from /user-progress/auth/login
+
   responses:
     Health:
       description: Service is up
@@ -62,7 +123,67 @@ components:
           schema:
             $ref: '#/components/schemas/HealthStatus'
 
+    Error:
+      description: Error response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
   schemas:
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+          description: Username or email
+        password:
+          type: string
+          format: password
+          minLength: 1
+          description: User password
+
+    SignupRequest:
+      type: object
+      required: [username, email, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+          description: Desired username
+        email:
+          type: string
+          format: email
+          description: User email address
+        password:
+          type: string
+          format: password
+          minLength: 8
+          description: User password (minimum 8 characters recommended)
+
+    AuthResponse:
+      type: object
+      required: [accessToken, tokenType]
+      properties:
+        accessToken:
+          type: string
+          description: JWT bearer token for API requests
+        tokenType:
+          type: string
+          enum: [Bearer]
+          description: Token type
+        expiresIn:
+          type: integer
+          format: int32
+          description: Token validity duration in seconds
+        userId:
+          type: string
+          format: uuid
+          description: Authenticated user ID
     HealthStatus:
       type: object
       required: [status, service]
