@@ -35,6 +35,49 @@ paths:
         '200':
           $ref: '#/components/responses/Health'
 
+  /catalog/shows:
+    get:
+      tags: [catalog]
+      operationId: listShows
+      summary: List all shows in the catalog
+      responses:
+        '200':
+          description: List of shows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ShowSummary'
+
+  /catalog/shows/{id}/episodes:
+    get:
+      tags: [catalog]
+      operationId: listShowEpisodes
+      summary: List episodes for a show, ordered by global episode index
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of episodes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Episode'
+        '404':
+          description: Show not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /chat/health:
     get:
       tags: [chat]
@@ -73,6 +116,44 @@ components:
         service:
           type: string
           example: catalog
+
+    ShowSummary:
+      type: object
+      required: [id, title, seasonsCount, episodesCount]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          example: Stranger Things
+        seasonsCount:
+          type: integer
+          minimum: 1
+        episodesCount:
+          type: integer
+          minimum: 1
+
+    Episode:
+      type: object
+      required: [id, season, episodeNumber, episodeIndex, title, summary]
+      properties:
+        id:
+          type: string
+          format: uuid
+        season:
+          type: integer
+          minimum: 1
+        episodeNumber:
+          type: integer
+          minimum: 1
+        episodeIndex:
+          type: integer
+          minimum: 1
+        title:
+          type: string
+        summary:
+          type: string
 
     Error:
       type: object

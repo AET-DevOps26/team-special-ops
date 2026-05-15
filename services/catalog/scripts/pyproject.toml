@@ -1,0 +1,9 @@
+[project]
+name = "catalog-scripts"
+version = "0.1.0"
+description = "Dev-time helpers for the catalog service (Wikipedia seed ingest)."
+requires-python = ">=3.11"
+dependencies = [
+    "requests>=2.32",
+    "beautifulsoup4>=4.12",
+]

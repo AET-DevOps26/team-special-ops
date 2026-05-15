@@ -51,6 +51,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-tso}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-tso}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-tso}
 
   chat:
     build:
