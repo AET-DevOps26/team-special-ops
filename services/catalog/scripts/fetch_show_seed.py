@@ -11,8 +11,9 @@ Usage:
 Notes:
 - Deterministic UUIDs (uuid5) keep re-runs byte-identical when the data hasn't
   changed, so `git diff` is meaningful.
-- Summaries come from the per-episode article's "Plot" section, falling back
-  to "Synopsis" or the article lede.
+- Episode list pages on Wikipedia transclude per-season articles using
+  {{:Show season N}} — this script fetches each season article directly and
+  extracts {{Episode list/sublist}} blocks which contain ShortSummary inline.
 - Content is licensed CC BY-SA 3.0; attribution is emitted as a trailing
   comment block on the SQL file.
 """
@@ -44,8 +45,8 @@ class EpisodeRow:
     article_title: str
 
 
-def fetch_episode_list_wikitext(page_title: str) -> str:
-    """Return the wikitext for a 'List of <show> episodes' page."""
+def fetch_wikitext(page_title: str) -> str | None:
+    """Return the wikitext for a Wikipedia page, or None if it doesn't exist."""
     resp = requests.get(
         WIKI_API,
         params={
@@ -59,121 +60,113 @@ def fetch_episode_list_wikitext(page_title: str) -> str:
         timeout=30,
     )
     resp.raise_for_status()
-    return resp.json()["parse"]["wikitext"]
+    data = resp.json()
+    if "error" in data or "parse" not in data:
+        return None
+    return data["parse"]["wikitext"]
 
 
-def parse_episode_rows(wikitext: str) -> list[tuple[int, int, str, str]]:
+def discover_seasons(episode_list_wikitext: str, show_title: str) -> list[int]:
     """
-    Parse season-by-season episode tables from a 'List of X episodes' wikitext.
+    Discover season numbers from the episode list page.
 
-    Returns a list of (season, episode_number_in_season, title, article_title)
-    tuples in airing order.
-
-    The wikitext uses the {{Episode list/sublist}} template; each entry has a
-    line like:
-        | EpisodeNumber = 1
-        | EpisodeNumber2 = 1
-        | Title = Chapter One: The Vanishing of Will Byers
-        | RTitle = {{Sortname|...}}
-    plus a season header. We use a tolerant regex extractor and rely on the
-    monotonic order of EpisodeNumber across the file.
+    The episode list page transcludes season articles using {{:Show season N}}
+    syntax. We scan for those transclusions and return the season numbers.
     """
-    rows: list[tuple[int, int, str, str]] = []
-    current_season = 0
-    season_re = re.compile(r"==\s*Season\s+(\d+).*?==", re.IGNORECASE)
-    episode_block_re = re.compile(
-        r"\{\{Episode list[^}]*?"
-        r"\|\s*EpisodeNumber\s*=\s*(?P<global>\d+)[^}]*?"
-        r"\|\s*EpisodeNumber2\s*=\s*(?P<inseason>\d+)[^}]*?"
-        r"\|\s*Title\s*=\s*(?P<title>[^|\n]+)",
-        re.DOTALL,
+    # Match patterns like {{:Stranger Things season 1}} or {{:Stranger Things season 5}}
+    pattern = re.compile(
+        r"\{\{:" + re.escape(show_title) + r"\s+season\s+(\d+)",
+        re.IGNORECASE,
     )
-
-    for line in wikitext.splitlines():
-        m = season_re.search(line)
-        if m:
-            current_season = int(m.group(1))
-
-    for m in episode_block_re.finditer(wikitext):
-        upto = wikitext[: m.start()]
-        season_matches = season_re.findall(upto)
-        season = int(season_matches[-1]) if season_matches else 1
-        in_season = int(m.group("inseason"))
-        title = clean_wiki_title(m.group("title"))
-        rows.append((season, in_season, title, title))
-
-    if not rows:
-        raise SystemExit(
-            "Could not parse any episode rows. The wikitext format may have "
-            "changed; inspect the page manually and adjust the regex."
-        )
-    return rows
+    seasons = sorted(set(int(m.group(1)) for m in pattern.finditer(episode_list_wikitext)))
+    return seasons
 
 
-def clean_wiki_title(raw: str) -> str:
-    """Strip wiki markup like '[[Title]]' or '{{Sortname|...}}' fragments from a title field."""
+def extract_field(block: str, field_name: str) -> str:
+    """
+    Extract a named field value from an Episode list/sublist block.
+
+    Handles both inline (| Field = value) and multi-line values, stopping
+    at the next pipe-prefixed field or end of block.
+    """
+    pattern = re.compile(
+        r"\|\s*" + re.escape(field_name) + r"\s*=\s*(.*?)(?=\n\s*\||\}\}$)",
+        re.DOTALL | re.IGNORECASE,
+    )
+    m = pattern.search(block)
+    if not m:
+        return ""
+    return m.group(1).strip()
+
+
+def split_episode_blocks(wikitext: str) -> list[str]:
+    """
+    Split wikitext into individual Episode list/sublist template blocks.
+
+    Each block starts at '{{Episode list/sublist' and ends just before the
+    next such block or at end-of-string.
+    """
+    marker = "{{Episode list/sublist"
+    parts = wikitext.split(marker)
+    # parts[0] is text before first block; parts[1:] are each block (without the marker)
+    return [marker + p for p in parts[1:]]
+
+
+def clean_wiki_markup(raw: str) -> str:
+    """Strip common wiki markup from a text field."""
     s = raw.strip()
-    s = re.sub(r"\[\[([^\]|]+\|)?([^\]]+)\]\]", r"\2", s)
-    s = re.sub(r"\{\{[^}]+\}\}", "", s)
+    # Remove [[target|display]] -> display, or [[target]] -> target
+    s = re.sub(r"\[\[(?:[^\]|]+\|)?([^\]]+)\]\]", r"\1", s)
+    # Remove remaining {{...}} templates
+    s = re.sub(r"\{\{[^}]*\}\}", "", s)
+    # Remove <ref>...</ref> and <ref ... />
+    s = re.sub(r"<ref[^>]*/?>.*?</ref>", "", s, flags=re.DOTALL)
+    s = re.sub(r"<ref[^>]*/>", "", s)
+    # Remove HTML tags
+    s = re.sub(r"<[^>]+>", "", s)
+    # Remove citation markers like [1]
+    s = re.sub(r"\[\d+\]", "", s)
+    # Remove leading/trailing quotes added by some templates
     s = re.sub(r'^"|"$', "", s)
+    # Normalise whitespace
+    s = re.sub(r"\s+", " ", s)
     return s.strip()
 
 
-def fetch_plot(article_title: str) -> str:
-    """Fetch the 'Plot' section of an episode's Wikipedia article and return clean prose."""
-    sections_resp = requests.get(
-        WIKI_API,
-        params={
-            "action": "parse",
-            "page": article_title,
-            "prop": "sections",
-            "format": "json",
-            "formatversion": 2,
-        },
-        headers={"User-Agent": USER_AGENT},
-        timeout=30,
-    )
-    sections_resp.raise_for_status()
-    sections = sections_resp.json()["parse"]["sections"]
-    section_index = None
-    for s in sections:
-        if s["line"].lower() in ("plot", "synopsis"):
-            section_index = s["index"]
-            break
+def parse_season_episodes(
+    season_wikitext: str,
+    season_number: int,
+    global_offset: int,
+) -> list[tuple[int, int, int, str, str]]:
+    """
+    Parse all episodes from a season article's wikitext.
 
-    if section_index is not None:
-        params = {
-            "action": "parse",
-            "page": article_title,
-            "prop": "text",
-            "section": section_index,
-            "format": "json",
-            "formatversion": 2,
-        }
-    else:
-        params = {
-            "action": "parse",
-            "page": article_title,
-            "prop": "text",
-            "section": 0,
-            "format": "json",
-            "formatversion": 2,
-        }
+    Returns a list of (season, in_season_ep, global_ep, title, short_summary)
+    tuples in airing order.
+    """
+    blocks = split_episode_blocks(season_wikitext)
+    results = []
+    for block in blocks:
+        ep_global_raw = extract_field(block, "EpisodeNumber")
+        ep_in_season_raw = extract_field(block, "EpisodeNumber2")
+        title_raw = extract_field(block, "Title")
+        summary_raw = extract_field(block, "ShortSummary")
 
-    text_resp = requests.get(
-        WIKI_API,
-        params=params,
-        headers={"User-Agent": USER_AGENT},
-        timeout=30,
-    )
-    text_resp.raise_for_status()
-    html = text_resp.json()["parse"]["text"]
-    soup = BeautifulSoup(html, "html.parser")
-    paragraphs = [p.get_text(" ", strip=True) for p in soup.find_all("p")]
-    text = "\n\n".join(p for p in paragraphs if p)
-    text = re.sub(r"\[\d+\]", "", text)
-    text = re.sub(r"\[citation needed\]", "", text, flags=re.IGNORECASE)
-    return text.strip()
+        if not ep_in_season_raw:
+            continue  # skip malformed blocks
+
+        try:
+            in_season = int(ep_in_season_raw.strip())
+        except ValueError:
+            continue
+
+        global_ep = global_offset + in_season
+        title = clean_wiki_markup(title_raw) if title_raw else f"Season {season_number}, Episode {in_season}"
+        summary = clean_wiki_markup(summary_raw) if summary_raw else ""
+
+        results.append((season_number, in_season, global_ep, title, summary))
+
+    return results
 
 
 def emit_sql(show_title: str, slug: str, episodes: list[EpisodeRow], output_path: str) -> None:
@@ -224,28 +217,67 @@ def main() -> int:
     p.add_argument("--output", required=True, help="Path to write the V2 SQL migration to")
     args = p.parse_args()
 
-    wikitext = fetch_episode_list_wikitext(args.episode_list_page)
-    parsed = parse_episode_rows(wikitext)
+    # Step 1: Fetch the episode list page to discover which seasons exist
+    print(f"Fetching episode list page: {args.episode_list_page}")
+    list_wikitext = fetch_wikitext(args.episode_list_page)
+    if not list_wikitext:
+        print(f"ERROR: Could not fetch page '{args.episode_list_page}'", file=sys.stderr)
+        return 1
 
-    episodes: list[EpisodeRow] = []
-    for global_index, (season, in_season, title, article_title) in enumerate(parsed, start=1):
-        summary = fetch_plot(article_title)
-        if not summary:
-            print(f"WARNING: empty summary for {article_title}", file=sys.stderr)
-            summary = f"(No plot summary available for {title}.)"
-        episodes.append(
-            EpisodeRow(
-                season=season,
-                episode_number=in_season,
-                episode_index=global_index,
-                title=title,
-                summary=summary,
-                article_title=article_title,
-            )
+    seasons = discover_seasons(list_wikitext, args.show_title)
+    if not seasons:
+        print(
+            f"ERROR: Could not discover season transclusions from '{args.episode_list_page}'.\n"
+            "Expected patterns like {{:Stranger Things season 1}} in the wikitext.",
+            file=sys.stderr,
         )
-        print(f"  fetched S{season}E{in_season} '{title}' ({len(summary)} chars)")
+        return 1
+    print(f"Discovered seasons: {seasons}")
 
-    emit_sql(args.show_title, args.slug, episodes, args.output)
+    # Step 2: Fetch each season article and parse episodes
+    all_episodes: list[EpisodeRow] = []
+    global_index = 0
+    for season_num in seasons:
+        season_page = f"{args.show_title} season {season_num}"
+        print(f"Fetching season {season_num}: {season_page}")
+        season_wikitext = fetch_wikitext(season_page)
+        if not season_wikitext:
+            print(f"  WARNING: Could not fetch '{season_page}', skipping.", file=sys.stderr)
+            continue
+
+        season_rows = parse_season_episodes(season_wikitext, season_num, global_index)
+        if not season_rows:
+            print(f"  WARNING: No episodes found in '{season_page}'.", file=sys.stderr)
+            continue
+
+        for season, in_season, global_ep, title, summary in season_rows:
+            if not summary:
+                print(f"  WARNING: empty summary for S{season}E{in_season} '{title}'", file=sys.stderr)
+                summary = f"(No plot summary available for {title}.)"
+
+            all_episodes.append(
+                EpisodeRow(
+                    season=season,
+                    episode_number=in_season,
+                    episode_index=global_ep,
+                    title=title,
+                    summary=summary,
+                    article_title=title,
+                )
+            )
+            print(f"  fetched S{season}E{in_season} '{title}' ({len(summary)} chars)")
+
+        global_index += len(season_rows)
+
+    if not all_episodes:
+        print(
+            "ERROR: Could not parse any episodes. "
+            "The wikitext format may have changed; inspect the season pages manually.",
+            file=sys.stderr,
+        )
+        return 1
+
+    emit_sql(args.show_title, args.slug, all_episodes, args.output)
     return 0
 
 
