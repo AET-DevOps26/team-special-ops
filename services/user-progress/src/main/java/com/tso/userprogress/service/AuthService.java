@@ -4,8 +4,9 @@ import com.tso.userprogress.entity.User;
 import com.tso.userprogress.exception.InvalidCredentialsException;
 import com.tso.userprogress.exception.UserAlreadyExistsException;
 import com.tso.userprogress.model.AuthResponse;
+import com.tso.userprogress.model.UserSummary;
 import com.tso.userprogress.security.JwtTokenProvider;
-import org.springframework.beans.factory.annotation.Value;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -13,72 +14,74 @@ public class AuthService {
 
   private final UserService userService;
   private final JwtTokenProvider jwtTokenProvider;
-  private final long jwtExpiration;
 
-  public AuthService(
-      UserService userService,
-      JwtTokenProvider jwtTokenProvider,
-      @Value("${jwt.expiration}") long jwtExpiration) {
+  public AuthService(UserService userService, JwtTokenProvider jwtTokenProvider) {
     this.userService = userService;
     this.jwtTokenProvider = jwtTokenProvider;
-    this.jwtExpiration = jwtExpiration;
   }
 
   /**
    * Sign up a new user.
    *
-   * @param username the username
    * @param email the email
    * @param password the password (minimum 8 characters)
-   * @return AuthResponse containing JWT token
-   * @throws UserAlreadyExistsException if username or email already exists
+   * @return AuthResponse containing JWT token and user info
+   * @throws UserAlreadyExistsException if email already exists
    */
-  public AuthResponse signup(String username, String email, String password) {
+  public AuthResponse signup(String email, String password) {
     // Check if user already exists
-    if (userService.usernameExists(username)) {
-      throw new UserAlreadyExistsException("Username '" + username + "' is already taken");
-    }
-
     if (userService.emailExists(email)) {
       throw new UserAlreadyExistsException("Email '" + email + "' is already registered");
     }
 
     // Create user
-    User user = userService.createUser(username, email, password);
+    User user = userService.createUser(email, password);
 
     // Generate token
-    String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername());
+    String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), email);
 
-    return new AuthResponse(accessToken, AuthResponse.TokenTypeEnum.BEARER)
-        .expiresIn(Math.toIntExact(jwtExpiration))
-        .userId(user.getId());
+    UserSummary userSummary = new UserSummary(user.getId(), user.getEmail());
+    return new AuthResponse(accessToken, AuthResponse.TokenTypeEnum.BEARER, userSummary);
   }
 
   /**
-   * Login with username and password.
+   * Login with email and password.
    *
-   * @param username the username
+   * @param email the email
    * @param password the password
-   * @return AuthResponse containing JWT token
+   * @return AuthResponse containing JWT token and user info
    * @throws InvalidCredentialsException if credentials are invalid
    */
-  public AuthResponse login(String username, String password) {
-    // Find user by username
+  public AuthResponse login(String email, String password) {
+    // Find user by email
     User user =
         userService
-            .findByUsername(username)
-            .orElseThrow(() -> new InvalidCredentialsException("Invalid username or password"));
+            .findByEmail(email)
+            .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password"));
 
     // Verify password
     if (!userService.verifyPassword(password, user.getPasswordHash())) {
-      throw new InvalidCredentialsException("Invalid username or password");
+      throw new InvalidCredentialsException("Invalid email or password");
     }
 
     // Generate token
-    String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername());
+    String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), email);
 
-    return new AuthResponse(accessToken, AuthResponse.TokenTypeEnum.BEARER)
-        .expiresIn(Math.toIntExact(jwtExpiration))
-        .userId(user.getId());
+    UserSummary userSummary = new UserSummary(user.getId(), user.getEmail());
+    return new AuthResponse(accessToken, AuthResponse.TokenTypeEnum.BEARER, userSummary);
+  }
+
+  /**
+   * Get current authenticated user.
+   *
+   * @param userId the user ID from JWT token
+   * @return UserSummary with user information
+   */
+  public UserSummary getCurrentUser(String userId) {
+    User user =
+        userService
+            .findById(UUID.fromString(userId))
+            .orElseThrow(() -> new InvalidCredentialsException("User not found"));
+    return new UserSummary(user.getId(), user.getEmail());
   }
 }

@@ -24,117 +24,98 @@ class AuthServiceTest {
   @Mock private JwtTokenProvider jwtTokenProvider;
 
   private AuthService authService;
-  private static final int JWT_EXPIRATION = 900;
 
   @BeforeEach
   void setUp() {
-    authService = new AuthService(userService, jwtTokenProvider, JWT_EXPIRATION);
+    authService = new AuthService(userService, jwtTokenProvider);
   }
 
   @Test
   void testSignupSuccess() {
-    String username = "newuser";
     String email = "newuser@example.com";
     String password = "password123";
     UUID userId = UUID.randomUUID();
 
     User user = new User();
     user.setId(userId);
-    user.setUsername(username);
     user.setEmail(email);
 
-    when(userService.usernameExists(username)).thenReturn(false);
     when(userService.emailExists(email)).thenReturn(false);
-    when(userService.createUser(username, email, password)).thenReturn(user);
-    when(jwtTokenProvider.generateAccessToken(userId, username)).thenReturn("test-token");
+    when(userService.createUser(email, password)).thenReturn(user);
+    when(jwtTokenProvider.generateAccessToken(userId, email)).thenReturn("test-token");
 
-    AuthResponse response = authService.signup(username, email, password);
+    AuthResponse response = authService.signup(email, password);
 
     assertNotNull(response);
     assertEquals("test-token", response.getAccessToken());
     assertEquals(AuthResponse.TokenTypeEnum.BEARER, response.getTokenType());
-    assertEquals(JWT_EXPIRATION, response.getExpiresIn());
-    assertEquals(userId, response.getUserId());
-  }
-
-  @Test
-  void testSignupUsernameAlreadyExists() {
-    String username = "existinguser";
-    String email = "newuser@example.com";
-    String password = "password123";
-
-    when(userService.usernameExists(username)).thenReturn(true);
-
-    assertThrows(
-        UserAlreadyExistsException.class, () -> authService.signup(username, email, password));
-
-    verify(userService, never()).createUser(anyString(), anyString(), anyString());
+    assertNotNull(response.getUser());
+    assertEquals(email, response.getUser().getEmail());
+    assertEquals(userId, response.getUser().getId());
   }
 
   @Test
   void testSignupEmailAlreadyExists() {
-    String username = "newuser";
     String email = "existing@example.com";
     String password = "password123";
 
-    when(userService.usernameExists(username)).thenReturn(false);
     when(userService.emailExists(email)).thenReturn(true);
 
-    assertThrows(
-        UserAlreadyExistsException.class, () -> authService.signup(username, email, password));
+    assertThrows(UserAlreadyExistsException.class, () -> authService.signup(email, password));
 
-    verify(userService, never()).createUser(anyString(), anyString(), anyString());
+    verify(userService, never()).createUser(anyString(), anyString());
   }
 
   @Test
   void testLoginSuccess() {
-    String username = "testuser";
+    String email = "testuser@example.com";
     String password = "password123";
     UUID userId = UUID.randomUUID();
 
     User user = new User();
     user.setId(userId);
-    user.setUsername(username);
+    user.setEmail(email);
     user.setPasswordHash("hashed-password");
 
-    when(userService.findByUsername(username)).thenReturn(Optional.of(user));
+    when(userService.findByEmail(email)).thenReturn(Optional.of(user));
     when(userService.verifyPassword(password, "hashed-password")).thenReturn(true);
-    when(jwtTokenProvider.generateAccessToken(userId, username)).thenReturn("test-token");
+    when(jwtTokenProvider.generateAccessToken(userId, email)).thenReturn("test-token");
 
-    AuthResponse response = authService.login(username, password);
+    AuthResponse response = authService.login(email, password);
 
     assertNotNull(response);
     assertEquals("test-token", response.getAccessToken());
     assertEquals(AuthResponse.TokenTypeEnum.BEARER, response.getTokenType());
-    assertEquals(JWT_EXPIRATION, response.getExpiresIn());
-    assertEquals(userId, response.getUserId());
+    assertNotNull(response.getUser());
+    assertEquals(email, response.getUser().getEmail());
+    assertEquals(userId, response.getUser().getId());
   }
 
   @Test
   void testLoginUserNotFound() {
-    String username = "nonexistent";
+    String email = "nonexistent@example.com";
     String password = "password123";
 
-    when(userService.findByUsername(username)).thenReturn(Optional.empty());
+    when(userService.findByEmail(email)).thenReturn(Optional.empty());
 
-    assertThrows(InvalidCredentialsException.class, () -> authService.login(username, password));
+    assertThrows(InvalidCredentialsException.class, () -> authService.login(email, password));
   }
 
   @Test
   void testLoginWrongPassword() {
-    String username = "testuser";
+    String email = "testuser@example.com";
     String password = "wrongpassword";
     UUID userId = UUID.randomUUID();
 
     User user = new User();
     user.setId(userId);
-    user.setUsername(username);
+    user.setEmail(email);
     user.setPasswordHash("hashed-password");
 
-    when(userService.findByUsername(username)).thenReturn(Optional.of(user));
+    when(userService.findByEmail(email)).thenReturn(Optional.of(user));
     when(userService.verifyPassword(password, "hashed-password")).thenReturn(false);
 
-    assertThrows(InvalidCredentialsException.class, () -> authService.login(username, password));
+    assertThrows(InvalidCredentialsException.class, () -> authService.login(email, password));
 
     verify(jwtTokenProvider, never()).generateAccessToken(any(), anyString());
   }

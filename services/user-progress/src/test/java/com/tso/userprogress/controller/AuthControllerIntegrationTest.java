@@ -50,7 +50,7 @@ class AuthControllerIntegrationTest {
 
   @Test
   void testSignupSuccess() throws Exception {
-    SignupRequest request = new SignupRequest("testuser", "test@example.com", "password123");
+    SignupRequest request = new SignupRequest("test@example.com", "password123");
 
     mockMvc
         .perform(
@@ -61,14 +61,14 @@ class AuthControllerIntegrationTest {
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.accessToken", notNullValue()))
         .andExpect(jsonPath("$.tokenType").value("Bearer"))
-        .andExpect(jsonPath("$.expiresIn").value(900))
-        .andExpect(jsonPath("$.userId", notNullValue()));
+        .andExpect(jsonPath("$.user.id", notNullValue()))
+        .andExpect(jsonPath("$.user.email").value("test@example.com"));
   }
 
   @Test
-  void testSignupDuplicateUsername() throws Exception {
-    SignupRequest request1 = new SignupRequest("testuser", "test1@example.com", "password123");
-    SignupRequest request2 = new SignupRequest("testuser", "test2@example.com", "password123");
+  void testSignupDuplicateEmail() throws Exception {
+    SignupRequest request1 = new SignupRequest("test1@example.com", "password123");
+    SignupRequest request2 = new SignupRequest("test1@example.com", "password123");
 
     // First signup should succeed
     mockMvc
@@ -78,7 +78,7 @@ class AuthControllerIntegrationTest {
                 .content(objectMapper.writeValueAsString(request1)))
         .andExpect(status().isCreated());
 
-    // Second signup with same username should fail
+    // Second signup with same email should fail
     mockMvc
         .perform(
             post("/user-progress/auth/signup")
@@ -92,8 +92,7 @@ class AuthControllerIntegrationTest {
   @Test
   void testLoginSuccess() throws Exception {
     // First create a user
-    SignupRequest signupRequest =
-        new SignupRequest("loginuser", "login@example.com", "password123");
+    SignupRequest signupRequest = new SignupRequest("login@example.com", "password123");
     mockMvc
         .perform(
             post("/user-progress/auth/signup")
@@ -102,7 +101,7 @@ class AuthControllerIntegrationTest {
         .andExpect(status().isCreated());
 
     // Then login
-    LoginRequest loginRequest = new LoginRequest("loginuser", "password123");
+    LoginRequest loginRequest = new LoginRequest("login@example.com", "password123");
     mockMvc
         .perform(
             post("/user-progress/auth/login")
@@ -112,14 +111,14 @@ class AuthControllerIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.accessToken", notNullValue()))
         .andExpect(jsonPath("$.tokenType").value("Bearer"))
-        .andExpect(jsonPath("$.userId", notNullValue()));
+        .andExpect(jsonPath("$.user.id", notNullValue()))
+        .andExpect(jsonPath("$.user.email").value("login@example.com"));
   }
 
   @Test
   void testLoginInvalidCredentials() throws Exception {
     // First create a user
-    SignupRequest signupRequest =
-        new SignupRequest("invaliduser", "invalid@example.com", "password123");
+    SignupRequest signupRequest = new SignupRequest("invalid@example.com", "password123");
     mockMvc
         .perform(
             post("/user-progress/auth/signup")
@@ -128,7 +127,7 @@ class AuthControllerIntegrationTest {
         .andExpect(status().isCreated());
 
     // Try to login with wrong password
-    LoginRequest loginRequest = new LoginRequest("invaliduser", "wrongpassword");
+    LoginRequest loginRequest = new LoginRequest("invalid@example.com", "wrongpassword");
     mockMvc
         .perform(
             post("/user-progress/auth/login")
@@ -141,7 +140,7 @@ class AuthControllerIntegrationTest {
 
   @Test
   void testSignupValidationFailure() throws Exception {
-    SignupRequest request = new SignupRequest("ab", "invalid-email", "short");
+    SignupRequest request = new SignupRequest("invalid-email", "short");
 
     mockMvc
         .perform(

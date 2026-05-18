@@ -6,18 +6,12 @@ import java.util.UUID;
 @Entity
 @Table(
     name = "users",
-    uniqueConstraints = {
-      @UniqueConstraint(columnNames = "username"),
-      @UniqueConstraint(columnNames = "email")
-    })
+    uniqueConstraints = {@UniqueConstraint(columnNames = "email")})
 public class User {
 
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
   private UUID id;
-
-  @Column(nullable = false, unique = true, length = 50)
-  private String username;
 
   @Column(nullable = false, unique = true, length = 255)
   private String email;
@@ -32,14 +26,6 @@ public class User {
 
   public void setId(UUID id) {
     this.id = id;
-  }
-
-  public String getUsername() {
-    return username;
-  }
-
-  public void setUsername(String username) {
-    this.username = username;
   }
 
   public String getEmail() {

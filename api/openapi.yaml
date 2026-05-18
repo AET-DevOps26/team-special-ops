@@ -17,60 +17,6 @@ servers:
     description: genai (local)
 
 paths:
-  /user-progress/auth/signup:
-    post:
-      tags: [user-progress]
-      operationId: signup
-      summary: Create a new user account
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SignupRequest'
-      responses:
-        '201':
-          description: User created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '400':
-          $ref: '#/components/responses/Error'
-        '409':
-          description: User already exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /user-progress/auth/login:
-    post:
-      tags: [user-progress]
-      operationId: login
-      summary: Authenticate user and get JWT token
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LoginRequest'
-      responses:
-        '200':
-          description: Login successful
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '400':
-          $ref: '#/components/responses/Error'
-        '401':
-          description: Invalid credentials
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
   /user-progress/health:
     get:
       tags: [user-progress]
@@ -79,6 +25,77 @@ paths:
       responses:
         '200':
           $ref: '#/components/responses/Health'
+
+  /user-progress/auth/signup:
+    post:
+      tags: [user-progress]
+      operationId: userProgressAuthSignup
+      summary: Create account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupRequest'
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /user-progress/auth/login:
+    post:
+      tags: [user-progress]
+      operationId: userProgressAuthLogin
+      summary: Sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /user-progress/auth/me:
+    get:
+      tags: [user-progress]
+      operationId: userProgressAuthMe
+      summary: Current user (session check)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSummary'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /catalog/health:
     get:
@@ -123,67 +140,7 @@ components:
           schema:
             $ref: '#/components/schemas/HealthStatus'
 
-    Error:
-      description: Error response
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-
   schemas:
-    LoginRequest:
-      type: object
-      required: [username, password]
-      properties:
-        username:
-          type: string
-          minLength: 3
-          maxLength: 50
-          description: Username or email
-        password:
-          type: string
-          format: password
-          minLength: 1
-          description: User password
-
-    SignupRequest:
-      type: object
-      required: [username, email, password]
-      properties:
-        username:
-          type: string
-          minLength: 3
-          maxLength: 50
-          description: Desired username
-        email:
-          type: string
-          format: email
-          description: User email address
-        password:
-          type: string
-          format: password
-          minLength: 8
-          description: User password (minimum 8 characters recommended)
-
-    AuthResponse:
-      type: object
-      required: [accessToken, tokenType]
-      properties:
-        accessToken:
-          type: string
-          description: JWT bearer token for API requests
-        tokenType:
-          type: string
-          enum: [Bearer]
-          description: Token type
-        expiresIn:
-          type: integer
-          format: int32
-          description: Token validity duration in seconds
-        userId:
-          type: string
-          format: uuid
-          description: Authenticated user ID
     HealthStatus:
       type: object
       required: [status, service]
@@ -207,3 +164,48 @@ components:
         details:
           type: object
           additionalProperties: true
+
+    SignupRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 1
+
+    UserSummary:
+      type: object
+      required: [id, email]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+
+    AuthResponse:
+      type: object
+      required: [accessToken, tokenType, user]
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          enum: [Bearer]
+        user:
+          $ref: '#/components/schemas/UserSummary'
