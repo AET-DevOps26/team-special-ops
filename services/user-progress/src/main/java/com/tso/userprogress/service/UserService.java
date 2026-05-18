@@ -95,4 +95,3 @@ public class UserService {
     return passwordEncoder.matches(rawPassword, hashedPassword);
   }
 }
-

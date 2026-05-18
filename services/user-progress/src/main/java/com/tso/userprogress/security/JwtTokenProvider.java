@@ -122,11 +122,6 @@ public class JwtTokenProvider {
    * @throws JwtException if token is invalid or expired
    */
   private Claims getClaims(String token) {
-    return Jwts.parser()
-        .setSigningKey(jwtSecret)
-        .parseClaimsJws(token)
-        .getBody();
+    return Jwts.parser().setSigningKey(jwtSecret).parseClaimsJws(token).getBody();
   }
 }
-
-

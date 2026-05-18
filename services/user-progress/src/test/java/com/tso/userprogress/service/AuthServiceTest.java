@@ -1,9 +1,12 @@
 package com.tso.userprogress.service;
 
-import com.tso.userprogress.model.AuthResponse;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
 import com.tso.userprogress.entity.User;
 import com.tso.userprogress.exception.InvalidCredentialsException;
 import com.tso.userprogress.exception.UserAlreadyExistsException;
+import com.tso.userprogress.model.AuthResponse;
 import com.tso.userprogress.security.JwtTokenProvider;
 import java.util.Optional;
 import java.util.UUID;
@@ -12,9 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
@@ -139,4 +139,3 @@ class AuthServiceTest {
     verify(jwtTokenProvider, never()).generateAccessToken(any(), anyString());
   }
 }
-

@@ -1,9 +1,9 @@
 package com.tso.userprogress.service;
 
-import com.tso.userprogress.model.AuthResponse;
 import com.tso.userprogress.entity.User;
 import com.tso.userprogress.exception.InvalidCredentialsException;
 import com.tso.userprogress.exception.UserAlreadyExistsException;
+import com.tso.userprogress.model.AuthResponse;
 import com.tso.userprogress.security.JwtTokenProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -67,8 +67,7 @@ public class AuthService {
     User user =
         userService
             .findByUsername(username)
-            .orElseThrow(
-                () -> new InvalidCredentialsException("Invalid username or password"));
+            .orElseThrow(() -> new InvalidCredentialsException("Invalid username or password"));
 
     // Verify password
     if (!userService.verifyPassword(password, user.getPasswordHash())) {
@@ -83,4 +82,3 @@ public class AuthService {
         .userId(user.getId());
   }
 }
-

@@ -29,15 +29,15 @@ class AuthController implements UserProgressApi {
 
   @Override
   public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
-    AuthResponse response = authService.login(loginRequest.getUsername(), loginRequest.getPassword());
+    AuthResponse response =
+        authService.login(loginRequest.getUsername(), loginRequest.getPassword());
     return ResponseEntity.ok(response);
   }
 
   @Override
-  public ResponseEntity<HealthStatus> userProgressHealth(){
-      HealthStatus body =
-      new HealthStatus().status(HealthStatus.StatusEnum.OK).service("user-progress");
-      return ResponseEntity.ok(body);
+  public ResponseEntity<HealthStatus> userProgressHealth() {
+    HealthStatus body =
+        new HealthStatus().status(HealthStatus.StatusEnum.OK).service("user-progress");
+    return ResponseEntity.ok(body);
   }
 }
-

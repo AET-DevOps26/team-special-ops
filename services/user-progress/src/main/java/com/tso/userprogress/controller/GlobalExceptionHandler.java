@@ -1,8 +1,8 @@
 package com.tso.userprogress.controller;
 
-import com.tso.userprogress.model.Error;
 import com.tso.userprogress.exception.InvalidCredentialsException;
 import com.tso.userprogress.exception.UserAlreadyExistsException;
+import com.tso.userprogress.model.Error;
 import java.util.HashMap;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -44,4 +44,3 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
   }
 }
-

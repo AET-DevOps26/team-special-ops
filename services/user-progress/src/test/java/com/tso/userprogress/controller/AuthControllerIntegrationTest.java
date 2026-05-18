@@ -1,27 +1,27 @@
 package com.tso.userprogress.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tso.userprogress.model.LoginRequest;
-import com.tso.userprogress.model.SignupRequest;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.jdbc.Sql;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-
 import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tso.userprogress.model.LoginRequest;
+import com.tso.userprogress.model.SignupRequest;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.jdbc.Sql;
+import org.springframework.test.web.servlet.MockMvc;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -50,8 +50,7 @@ class AuthControllerIntegrationTest {
 
   @Test
   void testSignupSuccess() throws Exception {
-    SignupRequest request =
-        new SignupRequest("testuser", "test@example.com", "password123");
+    SignupRequest request = new SignupRequest("testuser", "test@example.com", "password123");
 
     mockMvc
         .perform(
@@ -68,10 +67,8 @@ class AuthControllerIntegrationTest {
 
   @Test
   void testSignupDuplicateUsername() throws Exception {
-    SignupRequest request1 =
-        new SignupRequest("testuser", "test1@example.com", "password123");
-    SignupRequest request2 =
-        new SignupRequest("testuser", "test2@example.com", "password123");
+    SignupRequest request1 = new SignupRequest("testuser", "test1@example.com", "password123");
+    SignupRequest request2 = new SignupRequest("testuser", "test2@example.com", "password123");
 
     // First signup should succeed
     mockMvc
@@ -156,12 +153,12 @@ class AuthControllerIntegrationTest {
         .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
   }
 
-    @Test
-    void healthReturnsOkAndServiceName() throws Exception {
-        mockMvc.perform(get("/user-progress/health"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.status").value("ok"))
-            .andExpect(jsonPath("$.service").value("user-progress"));
-    }
+  @Test
+  void healthReturnsOkAndServiceName() throws Exception {
+    mockMvc
+        .perform(get("/user-progress/health"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("ok"))
+        .andExpect(jsonPath("$.service").value("user-progress"));
+  }
 }
-
