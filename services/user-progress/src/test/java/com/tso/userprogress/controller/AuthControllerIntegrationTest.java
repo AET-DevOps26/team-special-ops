@@ -153,6 +153,43 @@ class AuthControllerIntegrationTest {
   }
 
   @Test
+  void testUserProgressAuthMe() throws Exception {
+    // First create a user
+    String email = "authme@example.com";
+    SignupRequest signupRequest = new SignupRequest(email, "password123");
+
+    String response =
+        mockMvc
+            .perform(
+                post("/user-progress/auth/signup")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(signupRequest)))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+    // Extract the token from signup response
+    String accessToken = objectMapper.readTree(response).get("accessToken").asText();
+
+    // Call /auth/me with the JWT token
+    mockMvc
+        .perform(get("/user-progress/auth/me").header("Authorization", "Bearer " + accessToken))
+        .andDo(print())
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id", notNullValue()))
+        .andExpect(jsonPath("$.email").value(email));
+  }
+
+  @Test
+  void testUserProgressAuthMeWithoutToken() throws Exception {
+    mockMvc
+        .perform(get("/user-progress/auth/me"))
+        .andDo(print())
+        .andExpect(status().is4xxClientError());
+  }
+
+  @Test
   void healthReturnsOkAndServiceName() throws Exception {
     mockMvc
         .perform(get("/user-progress/health"))

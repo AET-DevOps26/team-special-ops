@@ -59,6 +59,9 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html")
                     .permitAll()
+                    // Protected endpoints - require JWT authentication
+                    .requestMatchers(HttpMethod.GET, "/user-progress/auth/me")
+                    .authenticated()
                     // All other requests require authentication
                     .anyRequest()
                     .authenticated())

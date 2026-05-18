@@ -28,16 +28,16 @@ public class JwtTokenProvider {
    * Generate a JWT access token for the given user.
    *
    * @param userId the user ID
-   * @param username the username
+   * @param email the user email
    * @return JWT token string
    */
-  public String generateAccessToken(UUID userId, String username) {
+  public String generateAccessToken(UUID userId, String email) {
     Date now = new Date();
     Date expiryDate = new Date(now.getTime() + jwtExpiration * 1000);
 
     return Jwts.builder()
         .setSubject(userId.toString())
-        .claim("username", username)
+        .claim("email", email)
         .setIssuedAt(now)
         .setExpiration(expiryDate)
         .signWith(jwtSecret, SignatureAlgorithm.HS256)
@@ -75,15 +75,15 @@ public class JwtTokenProvider {
   }
 
   /**
-   * Extract username from JWT token.
+   * Extract email from JWT token.
    *
    * @param token the JWT token
-   * @return the username
+   * @return the email
    * @throws JwtException if token is invalid or expired
    */
-  public String getUsernameFromToken(String token) {
+  public String getEmailFromToken(String token) {
     Claims claims = getClaims(token);
-    return claims.get("username", String.class);
+    return claims.get("email", String.class);
   }
 
   /**

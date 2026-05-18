@@ -21,14 +21,14 @@ class JwtTokenProviderTest {
   @Test
   void testGenerateAccessToken() {
     UUID userId = UUID.randomUUID();
-    String username = "testuser";
+    String email = "test@example.com";
 
-    String token = jwtTokenProvider.generateAccessToken(userId, username);
+    String token = jwtTokenProvider.generateAccessToken(userId, email);
 
     assertNotNull(token);
     assertTrue(jwtTokenProvider.validateToken(token));
     assertEquals(userId, jwtTokenProvider.getUserIdFromToken(token));
-    assertEquals(username, jwtTokenProvider.getUsernameFromToken(token));
+    assertEquals(email, jwtTokenProvider.getEmailFromToken(token));
   }
 
   @Test
@@ -45,7 +45,7 @@ class JwtTokenProviderTest {
   @Test
   void testValidateToken_Valid() {
     UUID userId = UUID.randomUUID();
-    String token = jwtTokenProvider.generateAccessToken(userId, "testuser");
+    String token = jwtTokenProvider.generateAccessToken(userId, "test@example.com");
 
     assertTrue(jwtTokenProvider.validateToken(token));
   }
@@ -67,7 +67,7 @@ class JwtTokenProviderTest {
   @Test
   void testGetUserIdFromToken() {
     UUID userId = UUID.randomUUID();
-    String token = jwtTokenProvider.generateAccessToken(userId, "testuser");
+    String token = jwtTokenProvider.generateAccessToken(userId, "test@example.com");
 
     UUID extractedUserId = jwtTokenProvider.getUserIdFromToken(token);
 
@@ -75,13 +75,13 @@ class JwtTokenProviderTest {
   }
 
   @Test
-  void testGetUsernameFromToken() {
+  void testGetEmailFromToken() {
     UUID userId = UUID.randomUUID();
-    String username = "testuser123";
-    String token = jwtTokenProvider.generateAccessToken(userId, username);
+    String email = "user@example.com";
+    String token = jwtTokenProvider.generateAccessToken(userId, email);
 
-    String extractedUsername = jwtTokenProvider.getUsernameFromToken(token);
+    String extractedEmail = jwtTokenProvider.getEmailFromToken(token);
 
-    assertEquals(username, extractedUsername);
+    assertEquals(email, extractedEmail);
   }
 }

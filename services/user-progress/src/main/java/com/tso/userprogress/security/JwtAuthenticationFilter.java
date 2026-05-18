@@ -29,9 +29,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
       if (StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt)) {
         var userId = jwtTokenProvider.getUserIdFromToken(jwt);
-        var username = jwtTokenProvider.getUsernameFromToken(jwt);
 
-        // Create authentication token with user details
+        // Create authentication token with user ID as principal
         UsernamePasswordAuthenticationToken authentication =
             new UsernamePasswordAuthenticationToken(
                 userId.toString(), null, new ArrayList<>()); // No authorities in MVP
