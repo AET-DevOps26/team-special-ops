@@ -38,7 +38,7 @@ paths:
             schema:
               $ref: '#/components/schemas/SignupRequest'
       responses:
-        '200':
+        '201':
           description: Account created
           content:
             application/json:
@@ -130,6 +130,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+      description: JWT bearer token. Obtain from /user-progress/auth/login
 
   responses:
     Health:
@@ -184,6 +185,7 @@ components:
           format: email
         password:
           type: string
+          minLength: 1
 
     UserSummary:
       type: object
