@@ -9,12 +9,11 @@ const mockUser: UserSummary = {
   email: 'test@example.com',
 }
 
-vi.mock('../context/AuthContext', () => ({
+vi.mock('../context/useAuth', () => ({
   useAuth: vi.fn(),
-  AuthProvider: ({ children }: { children: React.ReactNode }) => children,
 }))
 
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
 
 const mockUseAuth = vi.mocked(useAuth)
 
