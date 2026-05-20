@@ -1,5 +1,6 @@
 package com.tso.catalog.catalog;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -49,6 +50,34 @@ class ShowControllerIT extends PostgresIT {
         .andExpect(jsonPath("$[0].episodeNumber").value(1))
         .andExpect(jsonPath("$[0].title").isNotEmpty())
         .andExpect(jsonPath("$[0].summary").isNotEmpty());
+  }
+
+  @Test
+  void allEpisodeSummariesAreCleanPlotText() throws Exception {
+    MvcResult shows = mvc.perform(get("/catalog/shows")).andExpect(status().isOk()).andReturn();
+    JsonNode showsBody = mapper.readTree(shows.getResponse().getContentAsString());
+    UUID showId = UUID.fromString(showsBody.get(0).get("id").asText());
+
+    MvcResult episodes =
+        mvc.perform(get("/catalog/shows/" + showId + "/episodes"))
+            .andExpect(status().isOk())
+            .andReturn();
+    JsonNode body = mapper.readTree(episodes.getResponse().getContentAsString());
+
+    for (JsonNode ep : body) {
+      String title = ep.get("title").asText();
+      String summary = ep.get("summary").asText();
+      // Guards against the Wikipedia-parser bug where a malformed block let the
+      // ShortSummary extraction run past the template into ==Production==,
+      // wikitables, etc. (the original S3E8 summary was ~15k chars of dump).
+      assertThat(summary).as("summary for '%s' should be present", title).isNotBlank();
+      assertThat(summary.length())
+          .as("summary for '%s' should be a short plot blurb, not an article dump", title)
+          .isLessThan(5000);
+      assertThat(summary)
+          .as("summary for '%s' should not contain leaked wiki section markup", title)
+          .doesNotContain("==Production==", "==Marketing==", "==Reception==", "wikitable");
+    }
   }
 
   @Test

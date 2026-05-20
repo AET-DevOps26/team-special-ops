@@ -90,7 +90,7 @@ def extract_field(block: str, field_name: str) -> str:
     at the next pipe-prefixed field or end of block.
     """
     pattern = re.compile(
-        r"\|\s*" + re.escape(field_name) + r"\s*=\s*(.*?)(?=\n\s*\||\}\}$)",
+        r"\|\s*" + re.escape(field_name) + r"\s*=\s*(.*?)(?=\n\s*\||\}\}\s*$)",
         re.DOTALL | re.IGNORECASE,
     )
     m = pattern.search(block)
@@ -101,15 +101,37 @@ def extract_field(block: str, field_name: str) -> str:
 
 def split_episode_blocks(wikitext: str) -> list[str]:
     """
-    Split wikitext into individual Episode list/sublist template blocks.
+    Split wikitext into individual {{Episode list/sublist ...}} template blocks.
 
-    Each block starts at '{{Episode list/sublist' and ends just before the
-    next such block or at end-of-string.
+    Each block is brace-balanced: it starts at '{{Episode list/sublist' and ends
+    at the matching '}}', counting nested '{{'/'}}' pairs so field values that
+    contain templates (refs, {{ubl}}, ...) don't truncate the block early. This
+    bounding is what stops ShortSummary extraction from running past the template
+    into later article sections (==Production==, wikitables, etc.) — the cause of
+    the oversized S3E8 summary in the first generated seed.
     """
     marker = "{{Episode list/sublist"
-    parts = wikitext.split(marker)
-    # parts[0] is text before first block; parts[1:] are each block (without the marker)
-    return [marker + p for p in parts[1:]]
+    blocks: list[str] = []
+    n = len(wikitext)
+    start = wikitext.find(marker)
+    while start != -1:
+        depth = 0
+        j = start
+        while j < n - 1:
+            pair = wikitext[j : j + 2]
+            if pair == "{{":
+                depth += 1
+                j += 2
+            elif pair == "}}":
+                depth -= 1
+                j += 2
+                if depth == 0:
+                    break
+            else:
+                j += 1
+        blocks.append(wikitext[start:j])
+        start = wikitext.find(marker, j)
+    return blocks
 
 
 def clean_wiki_markup(raw: str) -> str:
