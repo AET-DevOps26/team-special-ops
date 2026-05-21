@@ -4,3 +4,26 @@ server:
 spring:
   application:
     name: user-progress
+  datasource:
+    url: jdbc:postgresql://localhost:5432/user_progress
+    username: postgres
+    password: ${POSTGRES_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          batch_size: 20
+          fetch_size: 50
+        order_inserts: true
+        order_updates: true
+
+jwt:
+  secret: ${JWT_SECRET:your-secret-key-min-32-chars-change-in-production}
+  expiration: ${JWT_EXPIRATION:900}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800}
