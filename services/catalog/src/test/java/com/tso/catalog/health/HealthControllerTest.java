@@ -4,21 +4,21 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.tso.catalog.catalog.ShowController;
+import com.tso.catalog.catalog.SeriesController;
 import com.tso.catalog.repo.EpisodeRepository;
-import com.tso.catalog.repo.ShowRepository;
+import com.tso.catalog.repo.SeriesRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-@WebMvcTest(ShowController.class)
+@WebMvcTest(SeriesController.class)
 class HealthControllerTest {
 
   @Autowired private MockMvc mvc;
 
-  @MockitoBean ShowRepository showRepository;
+  @MockitoBean SeriesRepository seriesRepository;
   @MockitoBean EpisodeRepository episodeRepository;
 
   @Test

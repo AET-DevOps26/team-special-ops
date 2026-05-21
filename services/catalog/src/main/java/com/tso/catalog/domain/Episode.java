@@ -17,8 +17,8 @@ public class Episode {
   @Id private UUID id;
 
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "show_id", nullable = false)
-  private Show show;
+  @JoinColumn(name = "series_id", nullable = false)
+  private Series series;
 
   @Column(nullable = false)
   private int season;
@@ -44,8 +44,8 @@ public class Episode {
     return id;
   }
 
-  public Show getShow() {
-    return show;
+  public Series getSeries() {
+    return series;
   }
 
   public int getSeason() {

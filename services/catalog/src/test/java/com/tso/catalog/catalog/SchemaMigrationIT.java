@@ -17,26 +17,26 @@ class SchemaMigrationIT extends PostgresIT {
   @Autowired DataSource dataSource;
 
   @Test
-  void flywayCreatesShowAndEpisodeTables() {
+  void flywayCreatesSeriesAndEpisodeTables() {
     var jdbc = new JdbcTemplate(dataSource);
     var tables =
         jdbc.queryForList(
             "SELECT table_name FROM information_schema.tables "
                 + "WHERE table_schema = 'public' "
-                + "AND table_name IN ('show', 'episode') "
+                + "AND table_name IN ('series', 'episode') "
                 + "ORDER BY table_name",
             String.class);
-    assertThat(tables).containsExactly("episode", "show");
+    assertThat(tables).containsExactly("episode", "series");
   }
 
   @Test
-  void episodeHasIndexOnShowIdEpisodeIndex() {
+  void episodeHasIndexOnSeriesIdEpisodeIndex() {
     var jdbc = new JdbcTemplate(dataSource);
     var indexes =
         jdbc.queryForList(
             "SELECT indexname FROM pg_indexes "
                 + "WHERE schemaname = 'public' AND tablename = 'episode'",
             String.class);
-    assertThat(indexes).contains("idx_episode_show_index");
+    assertThat(indexes).contains("idx_episode_series_index");
   }
 }

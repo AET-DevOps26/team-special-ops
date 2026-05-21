@@ -8,16 +8,16 @@
 
 | Subsystem | Technology | Responsibility |
 |---|---|---|
-| **Client** | React (Vite) + Tailwind | Web UI: auth, show selection, progress, chat, citation display |
+| **Client** | React (Vite) + Tailwind | Web UI: auth, series selection, progress, chat, citation display |
 | **Server** | Spring Boot (Java 21) | Three microservices exposing REST APIs (see below) |
 | **GenAI Service** | Python 3+ FastAPI + LangChain | Receives question + allowed episode summaries, formats prompt, calls LLM, returns answer. *Vector retrieval added in later phase.* |
-| **Database** | PostgreSQL | Persistent storage for users, progress, shows, episodes (with summaries), questions, answers, citations |
+| **Database** | PostgreSQL | Persistent storage for users, progress, series, episodes (with summaries), questions, answers, citations |
 | **External LLM** | OpenAI API (cloud) / GPT4All | Generation backend, configurable via env var |
 
 ### Server-side microservice split (3 microservices)
 
-- **User & Progress Service** — authentication, user accounts, watch progress per show
-- **Catalog Service** — shows, episodes (with per-episode summaries), metadata
+- **User & Progress Service** — authentication, user accounts, watch progress per series
+- **Catalog Service** — series, episodes (with per-episode summaries), metadata
 - **Chat Service** — receives questions, fetches allowed episode summaries, calls GenAI service, persists Q&A history
 
 ---
@@ -29,7 +29,7 @@ https://apollon.aet.cit.tum.de/c64402a9-5121-48ed-8227-2556defd8516?view=COLLABO
 
 *Episode carries a `summary` text field directly. The `cites` many-to-many association records which episodes' summaries informed a given answer; in v0 this means "every episode whose summary was bundled into the LLM prompt." If we later need per-citation metadata (relevance score, ordering), we can promote `cites` to an association class then.*
 
-*On progress storage: `currentEpisodeIndex` (a global episode index counted from 1 across the whole show) is the position used for ordering and filtering. `currentSeasonDisplay` and `currentEpisodeDisplay` are human readable fields written alongside it, used only for UI rendering (so the progress label doesn't require a JOIN to Episode on every read). On ChatQuestion, only `progressAtAsk` (the global index snapshot) is stored. Display fields can be derived via JOIN at read time, since questions are read less frequently than progress. Using a single integer for ordering also means the safety filter `episode_index ≤ progress` is one comparison in v0 SQL and translates directly to vector-DB metadata filtering when RAG is added.*
+*On progress storage: `currentEpisodeIndex` (a global episode index counted from 1 across the whole series) is the position used for ordering and filtering. `currentSeasonDisplay` and `currentEpisodeDisplay` are human readable fields written alongside it, used only for UI rendering (so the progress label doesn't require a JOIN to Episode on every read). On ChatQuestion, only `progressAtAsk` (the global index snapshot) is stored. Display fields can be derived via JOIN at read time, since questions are read less frequently than progress. Using a single integer for ordering also means the safety filter `episode_index ≤ progress` is one comparison in v0 SQL and translates directly to vector-DB metadata filtering when RAG is added.*
 
 ---
 
@@ -72,11 +72,11 @@ Each item below assumes its **own definition of done** includes: tests in CI, li
 | 1 | **Repo + CI foundation** | Mono-repo with subfolders for client, server, genai, infra, docs. `main` branch protected (PR + 1 review + green CI required). GitHub Actions runs build + test + lint per service on every PR. | Shared |
 | 2 | **Local docker-compose stack** | All services + Postgres boot via `docker compose up`. Sane defaults; ≤3 commands from clone to running system. | Shared |
 | 3 | **User auth** | Signup, login, JWT issuance, auth middleware on protected endpoints. Lives in **User & Progress Service**. | Server |
-| 4 | **Show catalog + seed data** | Postgres schema for `Show` and `Episode` (with `summary` field). Seed script loads chosen show. `GET /catalog/shows`, `GET /catalog/shows/{id}/episodes`. Lives in **Catalog Service**. | Server |
+| 4 | **Series catalog + seed data** | Postgres schema for `Series` and `Episode` (with `summary` field). Seed script loads chosen series. `GET /catalog/series`, `GET /catalog/series/{id}/episodes`. Lives in **Catalog Service**. | Server |
 | 5 | **Watch progress** | `GET /progress`, `PUT /progress` for current user. Lives in **User & Progress Service**. | Server |
 | 6 | **Chat endpoint** | `POST /chat/questions`: validates user + progress, fetches all episode summaries with `globalIndex ≤ progress` from Postgres, forwards question + summaries to GenAI service, persists question + answer with its cited episodes. Lives in **Chat Service**. | Server |
 | 7 | **GenAI service `/ask`** | FastAPI + LangChain. `POST /ask` accepts `{ question, allowed_summaries[] }`, formats a prompt (LangChain prompt template), calls LLM, returns `{ answer, cited_episode_indices[] }`. LLM backend is config-switchable between OpenAI (cloud) and a local model. | GenAI |
-| 8 | **Frontend MVP** | React app covering: signup/login, show selection, progress slider, chat with answer + citation display. Vitest tests on core flows. | Client |
+| 8 | **Frontend MVP** | React app covering: signup/login, series selection, progress slider, chat with answer + citation display. Vitest tests on core flows. | Client |
 | 9 | **Observability** | Prometheus metrics on all services (request count, latency, error rate). One Grafana dashboard, exported as `.json` in repo. One meaningful alert rule (e.g., GenAI service down or p95 latency > 8s). | Shared |
 | 10 | **Kubernetes deployment + CD** | Helm chart deploys the full stack. Deploys cleanly to both Rancher and Azure (separate values files). Merge to `main` triggers automatic deployment. Secrets via Kubernetes Secrets. | Shared |
 
@@ -91,7 +91,7 @@ These belong on the backlog *after* the 10 items above are green:
 - **Agentic routing.** Multi-source retrieval (plot vs. character vs. world).
 - **Self-RAG critique step.** Post-generation safety pass; exports a `spoiler_leakage_rate` metric.
 - **Question history view.** Browseable past Q&A on the frontend.
-- **Multiple shows.**
+- **Multiple series.**
 
 ## Notes for the team
 

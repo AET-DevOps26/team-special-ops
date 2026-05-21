@@ -1,12 +1,12 @@
 # catalog
 
-Spring Boot service for shows, episodes, and per-episode summaries.
+Spring Boot service for series, episodes, and per-episode summaries.
 
 ## Endpoints
 
 - `GET /catalog/health` — liveness probe
-- `GET /catalog/shows` — list all shows
-- `GET /catalog/shows/{id}/episodes` — episodes for a show, ordered by global `episodeIndex`
+- `GET /catalog/series` — list all series
+- `GET /catalog/series/{id}/episodes` — episodes for a series, ordered by global `episodeIndex`
 
 Full schema: see `api/openapi.yaml` or http://localhost:8082/swagger-ui.html when running.
 
@@ -14,19 +14,19 @@ Full schema: see `api/openapi.yaml` or http://localhost:8082/swagger-ui.html whe
 
 Two tables, owned by this service, in the shared Postgres `public` schema:
 
-- `show` — `id (UUID)`, `title`, `seasons_count`, `episodes_count`, `created_at`
-- `episode` — `id (UUID)`, `show_id`, `season`, `episode_number`, `episode_index`, `title`, `summary`, `created_at`
+- `series` — `id (UUID)`, `title`, `seasons_count`, `episodes_count`, `created_at`
+- `episode` — `id (UUID)`, `series_id`, `season`, `episode_number`, `episode_index`, `title`, `summary`, `created_at`
 
-`episode_index` is the global 1..N index across the whole show, used by the chat service's spoiler-safe filter (`episode_index <= progress`).
+`episode_index` is the global 1..N index across the whole series, used by the chat service's spoiler-safe filter (`episode_index <= progress`).
 
 Schema is managed by [Flyway](https://flywaydb.org/). Migration files live in `src/main/resources/db/migration/` and run automatically on application startup.
 
-## Seeding a new show
+## Seeding a new series
 
 Episode data is sourced from Wikipedia (per-episode "Plot" sections, or "ShortSummary" template fields on the per-season episode tables) by a dev-time Python script that produces a static SQL migration. The script is **not** invoked at runtime.
 
 ```bash
-uv run --project services/catalog/scripts services/catalog/scripts/fetch_show_seed.py \
+uv run --project services/catalog/scripts services/catalog/scripts/fetch_series_seed.py \
     "Stranger Things" \
     --episode-list-page "List of Stranger Things episodes" \
     --slug stranger_things \
