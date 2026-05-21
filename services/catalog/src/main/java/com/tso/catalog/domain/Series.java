@@ -8,8 +8,8 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "show")
-public class Show {
+@Table(name = "series")
+public class Series {
 
   @Id private UUID id;
 
@@ -25,7 +25,7 @@ public class Show {
   @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
   private OffsetDateTime createdAt;
 
-  protected Show() {}
+  protected Series() {}
 
   public UUID getId() {
     return id;

@@ -1,6 +1,6 @@
 # team-special-ops
 
-Spoiler-safe TV show Q&A — a web app that answers questions about a show using
+Spoiler-safe TV series Q&A — a web app that answers questions about a series using
 only episodes the viewer has already seen. Built as a DevOps course project:
 mono-repo, OpenAPI-first, CI/CD, observability, Kubernetes deployment.
 
@@ -11,7 +11,7 @@ mono-repo, OpenAPI-first, CI/CD, observability, Kubernetes deployment.
 | `api/openapi.yaml` | Single source of truth — OpenAPI 3.1 spec |
 | `api/scripts/gen-all.sh` | Regenerates Java stubs, Python client, TS types |
 | `services/user-progress/` | Spring Boot — auth + watch progress (port 8081) |
-| `services/catalog/` | Spring Boot — shows + episodes (port 8082) |
+| `services/catalog/` | Spring Boot — series + episodes (port 8082) |
 | `services/chat/` | Spring Boot — Q&A orchestration (port 8083) |
 | `services/genai/` | FastAPI + LangChain — LLM calls (port 8084) |
 | `web-client/` | React + Vite + TS + Tailwind (dev port 5173; Docker serves on 8080) |

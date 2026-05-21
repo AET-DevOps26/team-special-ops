@@ -1,16 +1,16 @@
 package com.tso.catalog.repo;
 
-import com.tso.catalog.domain.Show;
+import com.tso.catalog.domain.Series;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.repository.Repository;
 
-public interface ShowRepository extends Repository<Show, UUID> {
+public interface SeriesRepository extends Repository<Series, UUID> {
 
-  List<Show> findAllByOrderByTitleAsc();
+  List<Series> findAllByOrderByTitleAsc();
 
-  Optional<Show> findById(UUID id);
+  Optional<Series> findById(UUID id);
 
   boolean existsById(UUID id);
 }

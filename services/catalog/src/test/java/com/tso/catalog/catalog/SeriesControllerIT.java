@@ -20,14 +20,14 @@ import org.springframework.test.web.servlet.MvcResult;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ContextConfiguration(initializers = PostgresIT.Initializer.class)
-class ShowControllerIT extends PostgresIT {
+class SeriesControllerIT extends PostgresIT {
 
   @Autowired MockMvc mvc;
   @Autowired ObjectMapper mapper;
 
   @Test
-  void listShowsReturnsSeededShow() throws Exception {
-    mvc.perform(get("/catalog/shows"))
+  void listSeriesReturnsSeededSeries() throws Exception {
+    mvc.perform(get("/catalog/series"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(1))
         .andExpect(jsonPath("$[0].title").value("Stranger Things"))
@@ -36,13 +36,13 @@ class ShowControllerIT extends PostgresIT {
   }
 
   @Test
-  void listShowEpisodesReturnsAllEpisodesInIndexOrder() throws Exception {
-    MvcResult shows = mvc.perform(get("/catalog/shows")).andExpect(status().isOk()).andReturn();
-    JsonNode body = mapper.readTree(shows.getResponse().getContentAsString());
-    UUID showId = UUID.fromString(body.get(0).get("id").asText());
+  void listSeriesEpisodesReturnsAllEpisodesInIndexOrder() throws Exception {
+    MvcResult series = mvc.perform(get("/catalog/series")).andExpect(status().isOk()).andReturn();
+    JsonNode body = mapper.readTree(series.getResponse().getContentAsString());
+    UUID seriesId = UUID.fromString(body.get(0).get("id").asText());
     int expectedCount = body.get(0).get("episodesCount").asInt();
 
-    mvc.perform(get("/catalog/shows/" + showId + "/episodes"))
+    mvc.perform(get("/catalog/series/" + seriesId + "/episodes"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(expectedCount))
         .andExpect(jsonPath("$[0].episodeIndex").value(1))
@@ -54,12 +54,12 @@ class ShowControllerIT extends PostgresIT {
 
   @Test
   void allEpisodeSummariesAreCleanPlotText() throws Exception {
-    MvcResult shows = mvc.perform(get("/catalog/shows")).andExpect(status().isOk()).andReturn();
-    JsonNode showsBody = mapper.readTree(shows.getResponse().getContentAsString());
-    UUID showId = UUID.fromString(showsBody.get(0).get("id").asText());
+    MvcResult series = mvc.perform(get("/catalog/series")).andExpect(status().isOk()).andReturn();
+    JsonNode seriesBody = mapper.readTree(series.getResponse().getContentAsString());
+    UUID seriesId = UUID.fromString(seriesBody.get(0).get("id").asText());
 
     MvcResult episodes =
-        mvc.perform(get("/catalog/shows/" + showId + "/episodes"))
+        mvc.perform(get("/catalog/series/" + seriesId + "/episodes"))
             .andExpect(status().isOk())
             .andReturn();
     JsonNode body = mapper.readTree(episodes.getResponse().getContentAsString());
@@ -81,11 +81,11 @@ class ShowControllerIT extends PostgresIT {
   }
 
   @Test
-  void listShowEpisodesReturns404ForUnknownShow() throws Exception {
+  void listSeriesEpisodesReturns404ForUnknownSeries() throws Exception {
     UUID missing = UUID.randomUUID();
-    mvc.perform(get("/catalog/shows/" + missing + "/episodes"))
+    mvc.perform(get("/catalog/series/" + missing + "/episodes"))
         .andExpect(status().isNotFound())
-        .andExpect(jsonPath("$.code").value("SHOW_NOT_FOUND"))
+        .andExpect(jsonPath("$.code").value("SERIES_NOT_FOUND"))
         .andExpect(jsonPath("$.message").isNotEmpty());
   }
 }

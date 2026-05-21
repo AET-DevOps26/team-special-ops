@@ -7,5 +7,5 @@ import org.springframework.data.repository.Repository;
 
 public interface EpisodeRepository extends Repository<Episode, UUID> {
 
-  List<Episode> findByShow_IdOrderByEpisodeIndexAsc(UUID showId);
+  List<Episode> findBySeries_IdOrderByEpisodeIndexAsc(UUID seriesId);
 }

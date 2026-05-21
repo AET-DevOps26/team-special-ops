@@ -1,13 +1,13 @@
 package com.tso.catalog.catalog;
 
 import com.tso.catalog.api.CatalogApi;
-import com.tso.catalog.error.ShowNotFoundException;
+import com.tso.catalog.error.SeriesNotFoundException;
 import com.tso.catalog.model.Episode;
 import com.tso.catalog.model.Error;
 import com.tso.catalog.model.HealthStatus;
-import com.tso.catalog.model.ShowSummary;
+import com.tso.catalog.model.SeriesSummary;
 import com.tso.catalog.repo.EpisodeRepository;
-import com.tso.catalog.repo.ShowRepository;
+import com.tso.catalog.repo.SeriesRepository;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -16,13 +16,13 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-public class ShowController implements CatalogApi {
+public class SeriesController implements CatalogApi {
 
-  private final ShowRepository shows;
+  private final SeriesRepository series;
   private final EpisodeRepository episodes;
 
-  ShowController(ShowRepository shows, EpisodeRepository episodes) {
-    this.shows = shows;
+  SeriesController(SeriesRepository series, EpisodeRepository episodes) {
+    this.series = series;
     this.episodes = episodes;
   }
 
@@ -33,27 +33,27 @@ public class ShowController implements CatalogApi {
   }
 
   @Override
-  public ResponseEntity<List<ShowSummary>> listShows() {
-    List<ShowSummary> body =
-        shows.findAllByOrderByTitleAsc().stream().map(ShowSummaryMapper::toDto).toList();
+  public ResponseEntity<List<SeriesSummary>> listSeries() {
+    List<SeriesSummary> body =
+        series.findAllByOrderByTitleAsc().stream().map(SeriesSummaryMapper::toDto).toList();
     return ResponseEntity.ok(body);
   }
 
   @Override
-  public ResponseEntity<List<Episode>> listShowEpisodes(UUID id) {
-    if (!shows.existsById(id)) {
-      throw new ShowNotFoundException(id);
+  public ResponseEntity<List<Episode>> listSeriesEpisodes(UUID id) {
+    if (!series.existsById(id)) {
+      throw new SeriesNotFoundException(id);
     }
     List<Episode> body =
-        episodes.findByShow_IdOrderByEpisodeIndexAsc(id).stream()
+        episodes.findBySeries_IdOrderByEpisodeIndexAsc(id).stream()
             .map(EpisodeMapper::toDto)
             .toList();
     return ResponseEntity.ok(body);
   }
 
-  @ExceptionHandler(ShowNotFoundException.class)
-  ResponseEntity<Error> handleShowNotFound(ShowNotFoundException ex) {
+  @ExceptionHandler(SeriesNotFoundException.class)
+  ResponseEntity<Error> handleSeriesNotFound(SeriesNotFoundException ex) {
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(new Error().code("SHOW_NOT_FOUND").message(ex.getMessage()));
+        .body(new Error().code("SERIES_NOT_FOUND").message(ex.getMessage()));
   }
 }
