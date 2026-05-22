@@ -37,6 +37,16 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    environment:
+      # Shares the single Postgres database (tso) with the other services.
+      # A service-specific Flyway history table + baseline keeps user-progress
+      # migrations independent of catalog's, which also populates this schema.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-tso}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-tso}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-tso}
+      SPRING_FLYWAY_TABLE: flyway_schema_history_user_progress
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
+      SPRING_FLYWAY_BASELINE_VERSION: "0"
 
   catalog:
     build:
