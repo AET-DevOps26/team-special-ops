@@ -15,7 +15,7 @@ describe('progress api', () => {
     await getProgress('tok-1')
 
     const [url, options] = fetchMock.mock.calls[0]
-    expect(url).toBe('http://localhost:8081/user-progress/progress')
+    expect(url).toBe('/user-progress/progress')
     expect(new Headers(options.headers).get('Authorization')).toBe('Bearer tok-1')
   })
 
@@ -28,7 +28,7 @@ describe('progress api', () => {
     await updateProgress('tok-1', { seriesId: 's1', episodeIndex: 5 })
 
     const [url, options] = fetchMock.mock.calls[0]
-    expect(url).toBe('http://localhost:8081/user-progress/progress')
+    expect(url).toBe('/user-progress/progress')
     expect(options.method).toBe('PUT')
     expect(JSON.parse(options.body)).toEqual({ seriesId: 's1', episodeIndex: 5 })
     expect(new Headers(options.headers).get('Authorization')).toBe('Bearer tok-1')
