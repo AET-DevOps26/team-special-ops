@@ -43,9 +43,14 @@ public class SecurityConfig {
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
-    // Allow requests from localhost (development)
+    // Allowed browser origins: dev servers and the docker-compose web client
+    // (served at :8080 and reverse-proxied to this service).
     configuration.setAllowedOrigins(
-        Arrays.asList("http://localhost:3000", "http://localhost:5173", "http://localhost:80"));
+        Arrays.asList("http://localhost:3000", "http://localhost:5173", "http://localhost:8080"));
+    // Without explicit methods, Spring permits only GET/HEAD, so every POST/PUT
+    // (e.g. login) was rejected with 403 regardless of origin.
+    configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+    configuration.setAllowedHeaders(Arrays.asList("*"));
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", configuration);
     return source;
