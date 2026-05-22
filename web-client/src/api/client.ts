@@ -6,6 +6,10 @@ export function getBaseUrl(): string {
   return import.meta.env.VITE_USER_PROGRESS_URL ?? 'http://localhost:8081'
 }
 
+export function getCatalogBaseUrl(): string {
+  return import.meta.env.VITE_CATALOG_URL ?? 'http://localhost:8082'
+}
+
 export class ApiRequestError extends Error {
   readonly status: number
   readonly code?: string
@@ -21,8 +25,9 @@ export class ApiRequestError extends Error {
 export async function fetchJson<T>(
   path: string,
   options: RequestInit = {},
+  baseUrl: string = getBaseUrl(),
 ): Promise<T> {
-  const url = `${getBaseUrl()}${path}`
+  const url = `${baseUrl}${path}`
   const headers = new Headers(options.headers)
 
   if (options.body != null && !headers.has('Content-Type')) {

@@ -1,1 +1,7 @@
 @import "tailwindcss";
+
+/* Future-episode summaries are blurred until the user has watched that far. */
+.spoiler {
+  filter: blur(5px);
+  user-select: none;
+}
