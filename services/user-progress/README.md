@@ -25,6 +25,16 @@ works against `POST /user-progress/auth/login`. Demo use only — rotate or remo
 before any production deployment. If you change the password, regenerate the hash
 with the same `BCryptPasswordEncoder` (the seed won't work with a hand-edited hash).
 
+## Watch progress
+
+Per-series watch progress for the authenticated user (bearer JWT required):
+
+- `GET /user-progress/progress` — all of the caller's progress entries
+- `PUT /user-progress/progress` — body `{ "seriesId": "<uuid>", "episodeIndex": <int >= 0> }`,
+  upserts on `(user, series)` and returns the entry. `episodeIndex` is set to the
+  absolute value (may move backwards). `series_id` references the catalog by value;
+  it is not validated against the catalog service.
+
 ## Test (from `services/` parent)
 
     ./mvnw -pl user-progress verify
