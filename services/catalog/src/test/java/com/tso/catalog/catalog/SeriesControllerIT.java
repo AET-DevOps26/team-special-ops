@@ -2,6 +2,7 @@ package com.tso.catalog.catalog;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -78,6 +79,13 @@ class SeriesControllerIT extends PostgresIT {
           .as("summary for '%s' should not contain leaked wiki section markup", title)
           .doesNotContain("==Production==", "==Marketing==", "==Reception==", "wikitable");
     }
+  }
+
+  @Test
+  void allowsCorsFromTheWebClientOrigin() throws Exception {
+    mvc.perform(get("/catalog/series").header("Origin", "http://localhost:5173"))
+        .andExpect(status().isOk())
+        .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"));
   }
 
   @Test
