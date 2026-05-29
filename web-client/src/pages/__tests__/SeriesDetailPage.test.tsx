@@ -84,4 +84,46 @@ describe('SeriesDetailPage', () => {
 
     expect(await screen.findByText(/couldn't load/i)).toBeInTheDocument()
   })
+
+  it('defaults to the progress season and shows only that season', async () => {
+    mockListSeries.mockResolvedValue([
+      { id: 'st-1', title: 'Stranger Things', seasonsCount: 2, episodesCount: 4 },
+    ])
+    mockEpisodes.mockResolvedValue([
+      { id: 'a1', season: 1, episodeNumber: 1, episodeIndex: 1, title: 'S1E1', summary: 's1e1' },
+      { id: 'a2', season: 1, episodeNumber: 2, episodeIndex: 2, title: 'S1E2', summary: 's1e2' },
+      { id: 'b1', season: 2, episodeNumber: 1, episodeIndex: 3, title: 'S2E1', summary: 's2e1' },
+      { id: 'b2', season: 2, episodeNumber: 2, episodeIndex: 4, title: 'S2E2', summary: 's2e2' },
+    ])
+    mockGetProgress.mockResolvedValue([{ seriesId: 'st-1', episodeIndex: 3, updatedAt: 'now' }])
+
+    setup()
+
+    // The progress banner echoes the current episode's title (S2E1), so assert on a
+    // non-current episode of the season (S2E2) to test the episode list itself.
+    expect(await screen.findByText(/S2E2/)).toBeInTheDocument()
+    expect(screen.queryByText(/S1E1/)).not.toBeInTheDocument()
+  })
+
+  it('switches the visible season when another tab is clicked', async () => {
+    mockListSeries.mockResolvedValue([
+      { id: 'st-1', title: 'Stranger Things', seasonsCount: 2, episodesCount: 4 },
+    ])
+    mockEpisodes.mockResolvedValue([
+      { id: 'a1', season: 1, episodeNumber: 1, episodeIndex: 1, title: 'S1E1', summary: 's1e1' },
+      { id: 'a2', season: 1, episodeNumber: 2, episodeIndex: 2, title: 'S1E2', summary: 's1e2' },
+      { id: 'b1', season: 2, episodeNumber: 1, episodeIndex: 3, title: 'S2E1', summary: 's2e1' },
+      { id: 'b2', season: 2, episodeNumber: 2, episodeIndex: 4, title: 'S2E2', summary: 's2e2' },
+    ])
+    mockGetProgress.mockResolvedValue([{ seriesId: 'st-1', episodeIndex: 3, updatedAt: 'now' }])
+
+    setup()
+    // Defaults to season 2 (progress is S2E1). Assert on S2E2 (non-current) so the
+    // progress banner's echo of the current title doesn't create a duplicate match.
+    await screen.findByText(/S2E2/)
+
+    await userEvent.click(screen.getByRole('tab', { name: /season 1/i }))
+    expect(screen.getByText(/S1E2/)).toBeInTheDocument()
+    expect(screen.queryByText(/S2E2/)).not.toBeInTheDocument()
+  })
 })

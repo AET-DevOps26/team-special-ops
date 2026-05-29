@@ -5,17 +5,8 @@ import { getProgress, updateProgress } from '../api/progress'
 import { AppHeader } from '../components/AppHeader'
 import { EpisodeRow } from '../components/EpisodeRow'
 import { ProgressBanner } from '../components/ProgressBanner'
+import { SeasonTabs } from '../components/SeasonTabs'
 import { useAuth } from '../context'
-
-function groupBySeason(episodes: Episode[]): [number, Episode[]][] {
-  const map = new Map<number, Episode[]>()
-  for (const ep of episodes) {
-    const list = map.get(ep.season) ?? []
-    list.push(ep)
-    map.set(ep.season, list)
-  }
-  return [...map.entries()].sort((a, b) => a[0] - b[0])
-}
 
 export function SeriesDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -23,6 +14,7 @@ export function SeriesDetailPage() {
   const [series, setSeries] = useState<SeriesSummary | null>(null)
   const [episodes, setEpisodes] = useState<Episode[]>([])
   const [progress, setProgress] = useState(0)
+  const [selectedSeason, setSelectedSeason] = useState<number | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
 
   useEffect(() => {
@@ -33,9 +25,13 @@ export function SeriesDetailPage() {
     Promise.all([listSeries(), listSeriesEpisodes(id), getProgress(token)])
       .then(([seriesList, eps, progressList]) => {
         if (cancelled) return
+        const prog = progressList.find((p) => p.seriesId === id)?.episodeIndex ?? 0
+        const seasons = [...new Set(eps.map((e) => e.season))].sort((a, b) => a - b)
+        const seasonOnLoad = eps.find((e) => e.episodeIndex === prog)?.season ?? seasons[0] ?? null
         setSeries(seriesList.find((s) => s.id === id) ?? null)
         setEpisodes(eps)
-        setProgress(progressList.find((p) => p.seriesId === id)?.episodeIndex ?? 0)
+        setProgress(prog)
+        setSelectedSeason(seasonOnLoad)
         setStatus('ready')
       })
       .catch(() => {
@@ -52,6 +48,10 @@ export function SeriesDetailPage() {
     const saved = await updateProgress(token, { seriesId: id, episodeIndex })
     setProgress(saved.episodeIndex)
   }
+
+  const seasons = [...new Set(episodes.map((e) => e.season))].sort((a, b) => a - b)
+  const currentSeason = episodes.find((e) => e.episodeIndex === progress)?.season ?? null
+  const shownEpisodes = episodes.filter((e) => e.season === selectedSeason)
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -79,24 +79,22 @@ export function SeriesDetailPage() {
 
             <ProgressBanner episodes={episodes} progress={progress} />
 
-            <div className="mt-6 space-y-8">
-              {groupBySeason(episodes).map(([season, eps]) => (
-                <div key={season}>
-                  <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">
-                    Season {season}
-                  </h2>
-                  <div className="space-y-2">
-                    {eps.map((ep) => (
-                      <EpisodeRow
-                        key={ep.id}
-                        episode={ep}
-                        watched={ep.episodeIndex <= progress}
-                        isCurrent={ep.episodeIndex === progress}
-                        onSetCurrent={handleSetCurrent}
-                      />
-                    ))}
-                  </div>
-                </div>
+            <SeasonTabs
+              seasons={seasons}
+              selected={selectedSeason}
+              current={currentSeason}
+              onSelect={setSelectedSeason}
+            />
+
+            <div className="mt-4 space-y-2">
+              {shownEpisodes.map((ep) => (
+                <EpisodeRow
+                  key={ep.id}
+                  episode={ep}
+                  watched={ep.episodeIndex <= progress}
+                  isCurrent={ep.episodeIndex === progress}
+                  onSetCurrent={handleSetCurrent}
+                />
               ))}
             </div>
 
