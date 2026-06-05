@@ -1,0 +1,22 @@
+groups:
+  - name: tso-alerts
+    rules:
+      - alert: ServiceDown
+        expr: up{job=~"user-progress|catalog|chat|genai"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Target {{ $labels.instance }} for job {{ $labels.job }} has been unreachable for more than 1 minute."
+
+      - alert: HighErrorRate
+        expr: |
+          sum by (application) (rate(http_server_requests_seconds_count{outcome="SERVER_ERROR"}[5m]))
+            / sum by (application) (rate(http_server_requests_seconds_count[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High 5xx error rate for {{ $labels.application }}"
+          description: "Service {{ $labels.application }} has a 5xx error ratio of {{ $value }} (above 0.05) over the last 5 minutes."
