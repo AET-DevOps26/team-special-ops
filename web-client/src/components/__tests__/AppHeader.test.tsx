@@ -29,7 +29,7 @@ describe('AppHeader', () => {
       </MemoryRouter>,
     )
     expect(screen.getByText('demo@example.com')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /tv q&a/i })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: /sceneit/i })).toHaveAttribute('href', '/')
   })
 
   it('logs out when the button is clicked', async () => {

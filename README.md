@@ -1,8 +1,8 @@
 # team-special-ops
 
-Spoiler-safe TV series Q&A — a web app that answers questions about a series using
-only episodes the viewer has already seen. Built as a DevOps course project:
-mono-repo, OpenAPI-first, CI/CD, observability, Kubernetes deployment.
+**SceneIt** — a spoiler-safe TV series Q&A web app that answers questions about a
+series using only episodes the viewer has already seen. Built as a DevOps course
+project: mono-repo, OpenAPI-first, CI/CD, observability, Kubernetes deployment.
 
 ## Structure
 

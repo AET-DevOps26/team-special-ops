@@ -8,7 +8,7 @@ export function AppHeader() {
     <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
         <Link to="/" className="text-lg font-bold tracking-tight">
-          TV Q&amp;A
+          SceneIt
         </Link>
         <div className="flex items-center gap-3 text-sm">
           <span className="text-slate-500">{user?.email}</span>
