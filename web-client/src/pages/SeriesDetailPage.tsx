@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { listSeries, listSeriesEpisodes, type Episode, type SeriesSummary } from '../api/catalog'
 import { getProgress, updateProgress } from '../api/progress'
 import { AppHeader } from '../components/AppHeader'
+import { ChatPanel } from '../components/ChatPanel'
 import { EpisodeRow } from '../components/EpisodeRow'
 import { ProgressBanner } from '../components/ProgressBanner'
 import { SeasonTabs } from '../components/SeasonTabs'
@@ -56,7 +57,7 @@ export function SeriesDetailPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <AppHeader />
-      <main className="mx-auto max-w-5xl px-4 py-8">
+      <main className="mx-auto max-w-6xl px-4 py-8">
         <Link to="/" className="text-sm text-slate-500 hover:text-slate-900">
           ← Back to shows
         </Link>
@@ -66,7 +67,7 @@ export function SeriesDetailPage() {
           <p className="mt-6 text-rose-600">Couldn't load this series. Please try again.</p>
         )}
 
-        {status === 'ready' && (
+        {status === 'ready' && id && token && (
           <>
             <div className="mt-3">
               <h1 className="text-2xl font-bold">{series?.title ?? 'Series'}</h1>
@@ -77,39 +78,38 @@ export function SeriesDetailPage() {
               )}
             </div>
 
-            <ProgressBanner episodes={episodes} progress={progress} />
+            <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_20rem] lg:items-start">
+              <div>
+                <ProgressBanner episodes={episodes} progress={progress} />
 
-            <SeasonTabs
-              seasons={seasons}
-              selected={selectedSeason}
-              current={currentSeason}
-              onSelect={setSelectedSeason}
-            />
-
-            <div className="mt-4 space-y-2">
-              {shownEpisodes.map((ep) => (
-                <EpisodeRow
-                  key={ep.id}
-                  episode={ep}
-                  watched={ep.episodeIndex <= progress}
-                  isCurrent={ep.episodeIndex === progress}
-                  onSetCurrent={handleSetCurrent}
+                <SeasonTabs
+                  seasons={seasons}
+                  selected={selectedSeason}
+                  current={currentSeason}
+                  onSelect={setSelectedSeason}
                 />
-              ))}
-            </div>
 
-            <div className="mt-10 rounded-xl border border-dashed border-slate-300 bg-slate-100/60 p-5 text-center">
-              <p className="font-medium text-slate-600">Ask a spoiler-safe question</p>
-              <p className="mt-1 text-sm text-slate-400">
-                Coming next — the chat answers only from episodes up to your progress.
-              </p>
-              <button
-                type="button"
-                disabled
-                className="mt-3 cursor-not-allowed rounded-md bg-slate-300 px-4 py-2 text-sm font-medium text-white"
-              >
-                Chat (coming soon)
-              </button>
+                <div className="mt-4 space-y-2">
+                  {shownEpisodes.map((ep) => (
+                    <EpisodeRow
+                      key={ep.id}
+                      episode={ep}
+                      watched={ep.episodeIndex <= progress}
+                      isCurrent={ep.episodeIndex === progress}
+                      onSetCurrent={handleSetCurrent}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="lg:sticky lg:top-6">
+                <ChatPanel
+                  token={token}
+                  seriesId={id}
+                  progress={progress}
+                  episodes={episodes}
+                />
+              </div>
             </div>
           </>
         )}

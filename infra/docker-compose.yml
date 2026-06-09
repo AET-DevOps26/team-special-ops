@@ -79,6 +79,17 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      genai:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-tso}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-tso}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-tso}
+      SPRING_FLYWAY_TABLE: flyway_schema_history_chat
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
+      SPRING_FLYWAY_BASELINE_VERSION: "0"
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-min-32-chars-change-in-production}
+      GENAI_BASE_URL: http://genai:8084
 
   genai:
     build:
@@ -89,6 +100,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    environment:
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-nex-agi/nex-n2-pro:free}
+      OPENROUTER_HTTP_REFERER: ${OPENROUTER_HTTP_REFERER:-http://localhost:8080}
+      OPENROUTER_APP_NAME: ${OPENROUTER_APP_NAME:-sceneit-dev}
 
   web-client:
     build:

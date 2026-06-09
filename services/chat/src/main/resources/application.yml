@@ -4,6 +4,30 @@ server:
 spring:
   application:
     name: chat
+  datasource:
+    url: jdbc:postgresql://localhost:5432/tso
+    username: ${POSTGRES_USER:tso}
+    password: ${POSTGRES_PASSWORD:tso}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    table: ${SPRING_FLYWAY_TABLE:flyway_schema_history_chat}
+    baseline-on-migrate: true
+    baseline-version: 0
+
+genai:
+  base-url: ${GENAI_BASE_URL:http://localhost:8084}
+
+jwt:
+  secret: ${JWT_SECRET:your-secret-key-min-32-chars-change-in-production}
+  expiration: ${JWT_EXPIRATION:900}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800}
 
 management:
   endpoints:
