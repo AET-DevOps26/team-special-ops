@@ -1,0 +1,13 @@
+{{/*
+Non-secret shared config. Per-service plain env (extraEnv) is rendered directly
+into each Deployment; this ConfigMap holds values common to DB-backed services.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+  labels:
+    {{- include "tso.labels" . | nindent 4 }}
+data:
+  SPRING_DATASOURCE_URL: {{ include "tso.jdbcUrl" . | quote }}
+  SPRING_DATASOURCE_USERNAME: {{ .Values.postgres.user | quote }}

@@ -1,0 +1,100 @@
+{{/*
+Postgres as a StatefulSet with a volumeClaimTemplate so the data directory lives
+on a PersistentVolume that survives pod restarts/reschedules. A namespace *delete*
+(Rancher's weekly wipe) still removes the PVC -> empty DB on next deploy, which is
+fine because Flyway re-creates the schema and seeds data on service startup.
+*/}}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-postgres
+  labels:
+    {{- include "tso.labels" . | nindent 4 }}
+    app.kubernetes.io/name: postgres
+spec:
+  serviceName: {{ .Release.Name }}-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "tso.selectorLabels" (dict "root" . "name" "postgres") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "tso.labels" . | nindent 8 }}
+        {{- include "tso.selectorLabels" (dict "root" . "name" "postgres") | nindent 8 }}
+    spec:
+      securityContext:
+        # postgres:16-alpine runs as uid 70 (postgres); let the volume be group-owned.
+        fsGroup: 70
+      containers:
+        - name: postgres
+          image: {{ .Values.postgres.image | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: {{ .Values.postgres.user | quote }}
+            - name: POSTGRES_DB
+              value: {{ .Values.postgres.db | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: POSTGRES_PASSWORD
+            # Data dir as a subdir of the mount so lost+found on some volumes
+            # doesn't break initdb.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", {{ .Values.postgres.user | quote }}, "-d", {{ .Values.postgres.db | quote }}]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", {{ .Values.postgres.user | quote }}, "-d", {{ .Values.postgres.db | quote }}]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 3
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          {{- include "tso.labels" . | nindent 10 }}
+          app.kubernetes.io/name: postgres
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.postgres.storageClass }}
+        storageClassName: {{ .Values.postgres.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.postgres.storage | quote }}
+---
+{{/*
+Headless Service: gives the Postgres pod a stable in-cluster DNS name
+(<release>-postgres) that the application services connect to.
+*/}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-postgres
+  labels:
+    {{- include "tso.labels" . | nindent 4 }}
+    app.kubernetes.io/name: postgres
+spec:
+  clusterIP: None
+  selector:
+    {{- include "tso.selectorLabels" (dict "root" . "name" "postgres") | nindent 4 }}
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432

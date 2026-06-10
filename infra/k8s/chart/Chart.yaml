@@ -1,0 +1,8 @@
+apiVersion: v2
+name: tso
+description: Team Special Ops — full application stack (Postgres + 4 services + web client) for Kubernetes.
+type: application
+# Chart version: bump on chart changes. appVersion tracks the app release;
+# the actual image tag deployed is set by CD via --set image.tag=sha-<short>.
+version: 0.1.0
+appVersion: "0.1.0"
