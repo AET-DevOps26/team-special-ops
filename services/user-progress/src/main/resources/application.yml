@@ -5,9 +5,9 @@ spring:
   application:
     name: user-progress
   datasource:
-    url: jdbc:postgresql://localhost:5432/user_progress
-    username: postgres
-    password: ${POSTGRES_PASSWORD:postgres}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/tso}
+    username: ${SPRING_DATASOURCE_USERNAME:tso}
+    password: ${SPRING_DATASOURCE_PASSWORD:tso}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
