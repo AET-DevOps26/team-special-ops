@@ -102,3 +102,87 @@ jobs:
       - name: Build
         working-directory: web-client
         run: pnpm build
+
+  # Build all five service images and push them to GitHub Container Registry.
+  # Runs only after the test jobs pass (so a red build never publishes) and only
+  # on push to main — pull requests still run the tests above but publish nothing.
+  # Each image is tagged with both the commit SHA (immutable, what the Helm chart
+  # deploys for reproducible/rollback-able releases) and a moving `main`/`latest`.
+  publish-images:
+    needs: [java-services, genai, web-client]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The three Spring services share one multi-stage Dockerfile, built from
+          # the repo root and differentiated by build args.
+          - image: tso-user-progress
+            context: .
+            file: services/Dockerfile.spring
+            build-args: |
+              SERVICE=user-progress
+              JAVA_PKG=userprogress
+              APP_PORT=8081
+          - image: tso-catalog
+            context: .
+            file: services/Dockerfile.spring
+            build-args: |
+              SERVICE=catalog
+              JAVA_PKG=catalog
+              APP_PORT=8082
+          - image: tso-chat
+            context: .
+            file: services/Dockerfile.spring
+            build-args: |
+              SERVICE=chat
+              JAVA_PKG=chat
+              APP_PORT=8083
+          # genai builds from its own directory; the Dockerfile is self-contained.
+          - image: tso-genai
+            context: services/genai
+            file: services/genai/Dockerfile
+            build-args: ""
+          # web-client builds from the repo root (it needs api/openapi.yaml in context).
+          - image: tso-web-client
+            context: .
+            file: web-client/Dockerfile
+            build-args: ""
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # metadata-action lowercases the image name for us (GHCR requires it).
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+          tags: |
+            type=sha,prefix=sha-,format=short
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push ${{ matrix.image }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          build-args: ${{ matrix.build-args }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
