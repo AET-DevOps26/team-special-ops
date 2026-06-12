@@ -1,0 +1,93 @@
+{{/*
+One Deployment per entry in .Values.services. Templating it once (rather than a
+file per service) keeps every service consistent: same probe shape, same resource
+policy, same secret wiring. Behavioural differences are data in values.yaml.
+*/}}
+{{- range $name, $svc := .Values.services }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "tso.labels" $ | nindent 4 }}
+    app.kubernetes.io/name: {{ $name }}
+spec:
+  replicas: {{ $svc.replicas | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "tso.selectorLabels" (dict "root" $ "name" $name) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "tso.labels" $ | nindent 8 }}
+        {{- include "tso.selectorLabels" (dict "root" $ "name" $name) | nindent 8 }}
+    spec:
+      {{- if $.Values.image.pullSecret }}
+      imagePullSecrets:
+        - name: {{ $.Values.image.pullSecret }}
+      {{- end }}
+      containers:
+        - name: {{ $name }}
+          image: "{{ $.Values.image.registry }}/tso-{{ $name }}:{{ include "tso.imageTag" $ }}"
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          {{- if $svc.nonRoot }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ $svc.port }}
+          env:
+            {{- if $svc.db }}
+            # DB-backed Spring service: datasource + JWT from config/secret.
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $.Release.Name }}-config
+                  key: SPRING_DATASOURCE_URL
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $.Release.Name }}-config
+                  key: SPRING_DATASOURCE_USERNAME
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Release.Name }}-secrets
+                  key: SPRING_DATASOURCE_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Release.Name }}-secrets
+                  key: JWT_SECRET
+            {{- end }}
+            {{- range $k, $v := $svc.extraEnv }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+          startupProbe:
+            httpGet:
+              path: {{ $svc.healthPath }}
+              port: http
+            # Generous window so slow JVM boots aren't killed before they're up
+            # (30 * 5s = 150s). Liveness only takes over once this passes.
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: {{ $svc.healthPath }}
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: {{ $svc.healthPath }}
+              port: http
+            periodSeconds: 15
+            timeoutSeconds: 3
+          resources:
+            {{- toYaml $.Values.resources | nindent 12 }}
+{{- end }}

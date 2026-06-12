@@ -1,0 +1,23 @@
+# Rancher (course cluster) overrides. Only what differs from values.yaml.
+#
+# Deploys into the team's namespace `team-special-ops` (created inside the team's
+# Rancher Project). Set `ingress.host` to the hostname the course assigns, then
+# deploy with:
+#   helm upgrade --install tso ./infra/k8s/chart -n team-special-ops \
+#     -f ./infra/k8s/chart/values-rancher.yaml \
+#     --set image.tag="sha-$(git rev-parse --short HEAD)"
+# (or just: ./infra/k8s/deploy.sh rancher)
+
+ingress:
+  enabled: true
+  className: nginx
+  host: team-special-ops.stud.k8s.aet.cit.tum.de
+  tls:
+    enabled: false
+
+# Rancher provides a default StorageClass; leave empty to use it.
+postgres:
+  storageClass: ""
+
+# Secrets are injected at deploy time (--set or an out-of-git values file),
+# never committed here.

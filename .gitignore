@@ -36,3 +36,6 @@ Thumbs.db
 .env
 .env.local
 infra/.env
+
+# Local k8s deploy secrets (never commit)
+infra/k8s/.env

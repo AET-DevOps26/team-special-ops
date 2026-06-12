@@ -1,0 +1,107 @@
+# Default values for the tso chart.
+# These mirror the docker-compose setup so in-cluster behaviour matches local.
+# Per-environment files (values-rancher.yaml, values-azure.yaml) override only
+# what differs (hostnames, replica counts, TLS, etc).
+
+image:
+  registry: ghcr.io/aet-devops26
+  # tag is set by CD to sha-<short-sha>. Empty falls back to the chart appVersion,
+  # so `helm install` without --set still resolves to a real tag.
+  tag: ""
+  pullPolicy: IfNotPresent
+  # Images are public (see project decision), so no pull secret is needed.
+  # To switch to private images, set pullSecret to a docker-registry secret name
+  # and create that secret (deploy.sh has a commented-out helper for this).
+  pullSecret: ""
+
+# One block per application service. templates/deployment.yaml and service.yaml
+# range over this map, so adding a service is a values change, not a new template.
+#
+#   port        container + service port
+#   replicas    desired pod count
+#   db          true  -> inject SPRING_DATASOURCE_* + JWT_SECRET (DB-backed Spring service)
+#               false -> no datasource env (stub / stateless service)
+#   healthPath  HTTP path for liveness/readiness/startup probes
+#   nonRoot     run the container as UID 1000 (the Spring/genai images do; nginx does not)
+#   extraEnv    service-specific plain env (non-secret)
+services:
+  user-progress:
+    port: 8081
+    replicas: 1
+    db: true
+    healthPath: /actuator/health
+    nonRoot: true
+    extraEnv:
+      # Keep user-progress' Flyway history separate from catalog's in the shared DB.
+      SPRING_FLYWAY_TABLE: flyway_schema_history_user_progress
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
+      SPRING_FLYWAY_BASELINE_VERSION: "0"
+  catalog:
+    port: 8082
+    replicas: 1
+    db: true
+    healthPath: /actuator/health
+    nonRoot: true
+  chat:
+    port: 8083
+    replicas: 1
+    db: false # stub today: no datasource configured (matches compose)
+    healthPath: /actuator/health
+    nonRoot: true
+    extraEnv:
+      # In-cluster address of the genai service (for when chat's Q&A flow lands).
+      GENAI_BASE_URL: http://genai:8084
+  genai:
+    port: 8084
+    replicas: 1
+    db: false
+    healthPath: /genai/health
+    nonRoot: true
+  web-client:
+    port: 80
+    replicas: 1
+    db: false
+    healthPath: /
+    nonRoot: false # nginx binds :80 and runs as root in the official image
+
+postgres:
+  image: postgres:16-alpine
+  db: tso
+  user: tso
+  storage: 5Gi
+  # "" = use the cluster's default StorageClass (works on Rancher and AKS).
+  storageClass: ""
+
+# Non-secret connection wiring shared by DB-backed services.
+database:
+  # Built into SPRING_DATASOURCE_URL: jdbc:postgresql://<host>:5432/<postgres.db>
+  # host defaults to the postgres Service name created by this chart.
+  host: ""
+
+ingress:
+  enabled: true
+  className: nginx
+  host: tso.local # overridden per environment
+  tls:
+    enabled: false # true on Azure (cert-manager)
+    secretName: ""
+
+# Secrets: dev-only defaults. NEVER commit real values — CD injects them via --set
+# or a values file that is not in git.
+secrets:
+  jwtSecret: "dev-only-change-me-min-32-characters-long!!"
+  postgresPassword: "tso"
+  openaiApiKey: ""
+
+# Applied to every container. Requests = scheduling guarantee, limits = ceiling.
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 768Mi
+
+# Reserved for later PRs (HPA, ServiceMonitor); off by default.
+autoscaling:
+  enabled: false

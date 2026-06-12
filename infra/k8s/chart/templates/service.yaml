@@ -1,0 +1,23 @@
+{{/*
+One ClusterIP Service per application service, giving each a stable in-cluster
+DNS name (e.g. http://catalog:8082, http://genai:8084) — the same names the code
+and nginx proxy already use, so addressing matches docker-compose.
+*/}}
+{{- range $name, $svc := .Values.services }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "tso.labels" $ | nindent 4 }}
+    app.kubernetes.io/name: {{ $name }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "tso.selectorLabels" (dict "root" $ "name" $name) | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ $svc.port }}
+      targetPort: http
+{{- end }}
