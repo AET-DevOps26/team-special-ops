@@ -43,6 +43,9 @@ RUN set -eux; \
 # --- Runtime: JRE + app JAR only ---
 FROM eclipse-temurin:21-jre-jammy AS runtime
 ARG APP_PORT=8081
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends curl \
+  && rm -rf /var/lib/apt/lists/*
 RUN groupadd --gid 1000 app \
   && useradd --uid 1000 --gid app --shell /usr/sbin/nologin --no-create-home app
 WORKDIR /app

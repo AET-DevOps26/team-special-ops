@@ -212,6 +212,51 @@ paths:
         '200':
           $ref: '#/components/responses/Health'
 
+  /chat/questions:
+    post:
+      tags: [chat]
+      operationId: askQuestion
+      summary: Ask a spoiler-safe question about a series
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatQuestionRequest'
+      responses:
+        '201':
+          description: Question answered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatAnswerResponse'
+        '400':
+          description: Validation failed or no progress set
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Series not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '502':
+          description: GenAI service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /genai/health:
     get:
       tags: [genai]
@@ -220,6 +265,37 @@ paths:
       responses:
         '200':
           $ref: '#/components/responses/Health'
+
+  /genai/ask:
+    post:
+      tags: [genai]
+      operationId: genaiAsk
+      summary: Answer a question from allowed episode summaries (internal)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenAiAskRequest'
+      responses:
+        '200':
+          description: Answer with cited episodes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenAiAskResponse'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: LLM or parsing error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
 components:
   securitySchemes:
@@ -369,3 +445,87 @@ components:
         episodeIndex:
           type: integer
           minimum: 0
+
+    AllowedEpisodeSummary:
+      type: object
+      required: [episodeIndex, season, episodeNumber, title, summary]
+      properties:
+        episodeIndex:
+          type: integer
+          minimum: 1
+        season:
+          type: integer
+          minimum: 1
+        episodeNumber:
+          type: integer
+          minimum: 1
+        title:
+          type: string
+        summary:
+          type: string
+
+    GenAiAskRequest:
+      type: object
+      required: [question, allowedSummaries]
+      properties:
+        question:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        allowedSummaries:
+          type: array
+          items:
+            $ref: '#/components/schemas/AllowedEpisodeSummary'
+
+    GenAiAskResponse:
+      type: object
+      required: [answer, citedEpisodeIndices]
+      properties:
+        answer:
+          type: string
+        citedEpisodeIndices:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+
+    ChatQuestionRequest:
+      type: object
+      required: [seriesId, question]
+      properties:
+        seriesId:
+          type: string
+          format: uuid
+        question:
+          type: string
+          minLength: 1
+          maxLength: 2000
+
+    ChatAnswerResponse:
+      type: object
+      required:
+        - id
+        - question
+        - answer
+        - citedEpisodeIndices
+        - progressAtAsk
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        question:
+          type: string
+        answer:
+          type: string
+        citedEpisodeIndices:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+        progressAtAsk:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time

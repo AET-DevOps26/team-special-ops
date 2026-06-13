@@ -41,6 +41,26 @@ Optional — the Postgres credentials and JWT settings have dev-only defaults
 `infra/env.example` to `infra/.env` (gitignored), edit it, and append
 `--env-file infra/.env` to the commands above.
 
+## Ask a question (spoiler-safe chat)
+
+1. Copy `infra/env.example` to `infra/.env` and add your `OPENROUTER_API_KEY`.
+2. Start the stack: `docker compose -f infra/docker-compose.yml up --build`
+3. Open http://localhost:8080, sign in, open **Stranger Things**, and set your
+   current episode on the episode list.
+4. Use the **Ask a question** sidebar on the right — answers cite only episodes
+   up to your progress.
+
+Quick API check (replace `$TOKEN` and `$SERIES_ID`):
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"seriesId":"958661e6-226c-5117-9318-5e3265598767","question":"Who is Eleven?"}' \
+  http://localhost:8080/chat/questions
+```
+
+Spoiler trap checks: at progress S1E1, asking about S2 characters should not leak
+future plot; cited episode indices must always be ≤ your progress.
+
 ## Using it
 
 Open the app at **http://localhost:8080** and sign in with the seeded demo user:

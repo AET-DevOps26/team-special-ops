@@ -7,6 +7,7 @@ import { SeriesDetailPage } from '../SeriesDetailPage'
 vi.mock('../../context/useAuth', () => ({ useAuth: vi.fn() }))
 vi.mock('../../api/catalog', () => ({ listSeries: vi.fn(), listSeriesEpisodes: vi.fn() }))
 vi.mock('../../api/progress', () => ({ getProgress: vi.fn(), updateProgress: vi.fn() }))
+vi.mock('../../api/chat', () => ({ askQuestion: vi.fn() }))
 
 import { useAuth } from '../../context/useAuth'
 import { listSeries, listSeriesEpisodes } from '../../api/catalog'
@@ -103,6 +104,16 @@ describe('SeriesDetailPage', () => {
     // non-current episode of the season (S2E2) to test the episode list itself.
     expect(await screen.findByText(/S2E2/)).toBeInTheDocument()
     expect(screen.queryByText(/S1E1/)).not.toBeInTheDocument()
+  })
+
+  it('renders the chat sidebar', async () => {
+    mockListSeries.mockResolvedValue([series])
+    mockEpisodes.mockResolvedValue(episodes)
+    mockGetProgress.mockResolvedValue([{ seriesId: 'st-1', episodeIndex: 2, updatedAt: 'now' }])
+
+    setup()
+
+    expect(await screen.findByText('Ask a question')).toBeInTheDocument()
   })
 
   it('switches the visible season when another tab is clicked', async () => {

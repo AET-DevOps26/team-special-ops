@@ -11,6 +11,7 @@ export default defineConfig({
     proxy: {
       '/catalog': 'http://localhost:8082',
       '/user-progress': 'http://localhost:8081',
+      '/chat': 'http://localhost:8083',
     },
   },
   test: {
