@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "GenAI service: FastAPI + LangChain"
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi>=0.115.0",
+    "fastapi>=0.136.3",
     "uvicorn[standard]>=0.32.0",
     "langchain>=0.3.0",
     "langchain-openai>=0.2.0",
