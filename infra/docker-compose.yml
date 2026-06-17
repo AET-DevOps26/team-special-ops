@@ -32,6 +32,7 @@ services:
       - traefik.enable=true
       - traefik.http.routers.traefik.rule=PathPrefix(`/dashboard`) || PathPrefix(`/api/traefik`)
       - traefik.http.services.traefik.loadbalancer.server.port=8080
+      - traefik.http.middlewares.api-strip.stripprefix.prefixes=/api
   postgres:
     image: postgres:16-alpine
     environment:
@@ -64,8 +65,7 @@ services:
       - traefik.http.routers.user-progress.rule=PathPrefix(`/api/user-progress`)
       - traefik.http.routers.user-progress.entrypoints=web
       - traefik.http.services.user-progress.loadbalancer.server.port=8081
-      - traefik.http.middlewares.user-progress-strip.stripprefix.prefixes=/api/user-progress
-      - traefik.http.routers.user-progress.middlewares=user-progress-strip@docker
+      - traefik.http.routers.user-progress.middlewares=api-strip@docker
     depends_on:
       postgres:
         condition: service_healthy
@@ -101,8 +101,7 @@ services:
       - traefik.http.routers.catalog.rule=PathPrefix(`/api/catalog`)
       - traefik.http.routers.catalog.entrypoints=web
       - traefik.http.services.catalog.loadbalancer.server.port=8082
-      - traefik.http.middlewares.catalog-strip.stripprefix.prefixes=/api/catalog
-      - traefik.http.routers.catalog.middlewares=catalog-strip@docker
+      - traefik.http.routers.catalog.middlewares=api-strip@docker
     depends_on:
       postgres:
         condition: service_healthy
@@ -132,8 +131,7 @@ services:
       - traefik.http.routers.chat.rule=PathPrefix(`/api/chat`)
       - traefik.http.routers.chat.entrypoints=web
       - traefik.http.services.chat.loadbalancer.server.port=8083
-      - traefik.http.middlewares.chat-strip.stripprefix.prefixes=/api/chat
-      - traefik.http.routers.chat.middlewares=chat-strip@docker
+      - traefik.http.routers.chat.middlewares=api-strip@docker
     depends_on:
       postgres:
         condition: service_healthy
@@ -164,8 +162,7 @@ services:
       - traefik.http.routers.genai.rule=PathPrefix(`/api/genai`)
       - traefik.http.routers.genai.entrypoints=web
       - traefik.http.services.genai.loadbalancer.server.port=8084
-      - traefik.http.middlewares.genai-strip.stripprefix.prefixes=/api/genai
-      - traefik.http.routers.genai.middlewares=genai-strip@docker
+      - traefik.http.routers.genai.middlewares=api-strip@docker
     depends_on:
       postgres:
         condition: service_healthy
