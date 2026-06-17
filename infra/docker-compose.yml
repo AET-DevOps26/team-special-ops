@@ -19,19 +19,16 @@ services:
     command:
       - --api.insecure=true
       - --api.dashboard=true
-      - --api.debug=true
       - --entrypoints.web.address=:80
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
     ports:
-      - "80:80"
-      - "8090:8080"
+      - "8080:80"
+      - "8000:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     labels:
       - traefik.enable=true
-      - traefik.http.routers.traefik.rule=PathPrefix(`/dashboard`) || PathPrefix(`/api/traefik`)
-      - traefik.http.services.traefik.loadbalancer.server.port=8080
       - traefik.http.middlewares.api-strip.stripprefix.prefixes=/api
   postgres:
     image: postgres:16-alpine
@@ -176,8 +173,6 @@ services:
     build:
       context: ..
       dockerfile: web-client/Dockerfile
-    ports:
-      - "8080:80"
     labels:
       - traefik.enable=true
       - traefik.http.routers.web-client.rule=PathPrefix(`/`)
