@@ -22,6 +22,9 @@ services:
       - --entrypoints.web.address=:80
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
+      - --metrics.prometheus=true
+      - --metrics.prometheus.addEntryPointsLabels=true
+      - --metrics.prometheus.addServicesLabels=true
     ports:
       - "8080:80"
       - "8000:8080"
@@ -189,10 +192,16 @@ services:
     ports:
       - "9090:9090"
     depends_on:
-      - user-progress
-      - catalog
-      - chat
-      - genai
+      traefik:
+        condition: service_started
+      user-progress:
+        condition: service_started
+      catalog:
+        condition: service_started
+      chat:
+        condition: service_started
+      genai:
+        condition: service_started
 
   grafana:
     image: grafana/grafana:11.3.0
