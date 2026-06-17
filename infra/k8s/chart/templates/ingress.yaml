@@ -13,7 +13,7 @@ metadata:
     {{- include "tso.labels" . | nindent 4 }}
   {{- if .Values.ingress.tls.enabled }}
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.tls.clusterIssuer | default "letsencrypt-prod" }}
   {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}

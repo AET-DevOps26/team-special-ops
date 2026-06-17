@@ -12,12 +12,30 @@ ingress:
   enabled: true
   className: nginx
   host: team-special-ops.stud.k8s.aet.cit.tum.de
+  # cert-manager issues a Let's Encrypt cert via ACME HTTP-01 (same pattern other
+  # teams use); the nginx ingress then serves HTTPS on :443 and 308-redirects
+  # HTTP -> HTTPS. Using STAGING while we iterate (deploy/wipe cycles would burn
+  # prod's 5-duplicate-certs/week limit). Browsers will warn "untrusted" until we
+  # flip this to letsencrypt-prod for the final graded deploy.
   tls:
-    enabled: false
+    enabled: true
+    clusterIssuer: letsencrypt-staging
 
 # Rancher provides a default StorageClass; leave empty to use it.
 postgres:
   storageClass: ""
+
+# The course namespace has a ResourceQuota (limits.cpu=4, limits.memory=6Gi).
+# Six workloads (postgres + 5 services) at the chart default of 1 cpu each would
+# request 6 cores and get rejected, so cap the per-container CPU limit. At 500m
+# the total is 6 x 500m = 3 cores and 6 x 768Mi = 4.6Gi — both within quota.
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 768Mi
 
 # Secrets are injected at deploy time (--set or an out-of-git values file),
 # never committed here.
