@@ -80,6 +80,13 @@ spec:
             - name: {{ $k }}
               value: {{ $v | quote }}
             {{- end }}
+            {{- range $envName, $secretKey := $svc.extraSecretEnv }}
+            - name: {{ $envName }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Release.Name }}-secrets
+                  key: {{ $secretKey }}
+            {{- end }}
           startupProbe:
             httpGet:
               path: {{ $svc.healthPath }}

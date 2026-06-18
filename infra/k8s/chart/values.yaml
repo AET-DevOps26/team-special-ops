@@ -66,6 +66,11 @@ services:
     db: false
     healthPath: /genai/health
     nonRoot: true
+    extraEnv:
+      LLM_MODEL: openai/gpt-oss-120b
+      LLM_BASE_URL: https://logos.aet.cit.tum.de/v1
+    extraSecretEnv:
+      LOGOS_API_KEY: LOGOS_API_KEY
   web-client:
     port: 80
     replicas: 1
@@ -104,7 +109,7 @@ ingress:
 secrets:
   jwtSecret: "dev-only-change-me-min-32-characters-long!!"
   postgresPassword: "tso"
-  openaiApiKey: ""
+  logosApiKey: ""
 
 # Applied to every container. Requests = scheduling guarantee, limits = ceiling.
 resources:

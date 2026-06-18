@@ -1,15 +1,16 @@
 # genai
 
-FastAPI + LangChain service that answers spoiler-safe questions via OpenRouter.
+FastAPI + LangChain service that answers spoiler-safe questions via TUM Logos.
 
 ## Setup
 
-Copy `infra/env.example` to `infra/.env` and set `OPENROUTER_API_KEY` (get one at
-https://openrouter.ai/keys). Never commit real keys.
+Copy `infra/env.example` to `infra/.env` and set `LOGOS_API_KEY` (team key from your
+tutor). Off campus you need [eduVPN](https://www.eduvpn.org/). Never commit real keys.
 
 ```bash
-export OPENROUTER_API_KEY=sk-or-...
-export LLM_MODEL=nex-agi/nex-n2-pro:free   # or another OpenRouter model
+export LOGOS_API_KEY=lg-...
+export LLM_MODEL=openai/gpt-oss-120b
+# export LLM_BASE_URL=https://logos.aet.cit.tum.de/v1   # default
 ```
 
 ## Run

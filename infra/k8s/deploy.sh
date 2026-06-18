@@ -12,7 +12,7 @@
 #
 # Secrets are read from the environment so nothing sensitive lives in git. Set
 # them before running (or source a gitignored infra/k8s/.env):
-#   JWT_SECRET, POSTGRES_PASSWORD, OPENAI_API_KEY (optional)
+#   JWT_SECRET, POSTGRES_PASSWORD, LOGOS_API_KEY (optional)
 
 set -euo pipefail
 
@@ -43,7 +43,7 @@ echo ">> Deploying release '$RELEASE' to namespace '$NAMESPACE' ($ENV), image ta
 SECRET_ARGS=()
 [[ -n "${JWT_SECRET:-}" ]]       && SECRET_ARGS+=(--set "secrets.jwtSecret=$JWT_SECRET")
 [[ -n "${POSTGRES_PASSWORD:-}" ]] && SECRET_ARGS+=(--set "secrets.postgresPassword=$POSTGRES_PASSWORD")
-[[ -n "${OPENAI_API_KEY:-}" ]]   && SECRET_ARGS+=(--set "secrets.openaiApiKey=$OPENAI_API_KEY")
+[[ -n "${LOGOS_API_KEY:-}" ]]   && SECRET_ARGS+=(--set "secrets.logosApiKey=$LOGOS_API_KEY")
 
 helm upgrade --install "$RELEASE" "$CHART_DIR" \
   --namespace "$NAMESPACE" --create-namespace \

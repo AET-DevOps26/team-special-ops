@@ -1,22 +1,22 @@
 import os
 from dataclasses import dataclass
 
+LOGOS_DEFAULT_BASE_URL = "https://logos.aet.cit.tum.de/v1"
+LOGOS_DEFAULT_MODEL = "openai/gpt-oss-120b"
+
 
 @dataclass(frozen=True)
 class Settings:
-    openrouter_api_key: str
+    logos_api_key: str
     llm_model: str
-    openrouter_http_referer: str | None
-    openrouter_app_name: str | None
+    llm_base_url: str
     max_context_chars: int
 
 
 def load_settings() -> Settings:
-    api_key = os.environ.get("OPENROUTER_API_KEY", "")
     return Settings(
-        openrouter_api_key=api_key,
-        llm_model=os.environ.get("LLM_MODEL", "nex-agi/nex-n2-pro:free"),
-        openrouter_http_referer=os.environ.get("OPENROUTER_HTTP_REFERER"),
-        openrouter_app_name=os.environ.get("OPENROUTER_APP_NAME"),
+        logos_api_key=os.environ.get("LOGOS_API_KEY", ""),
+        llm_model=os.environ.get("LLM_MODEL", LOGOS_DEFAULT_MODEL),
+        llm_base_url=os.environ.get("LLM_BASE_URL", LOGOS_DEFAULT_BASE_URL),
         max_context_chars=int(os.environ.get("MAX_CONTEXT_CHARS", "12000")),
     )

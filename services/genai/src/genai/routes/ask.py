@@ -29,12 +29,12 @@ class GenAiAskResponse(BaseModel):
 @router.post("/genai/ask", response_model=GenAiAskResponse)
 async def genai_ask(body: GenAiAskRequest) -> GenAiAskResponse:
     settings: Settings = load_settings()
-    if not settings.openrouter_api_key:
+    if not settings.logos_api_key:
         raise HTTPException(
             status_code=500,
             detail=ErrorBody(
                 code="LLM_NOT_CONFIGURED",
-                message="OPENROUTER_API_KEY is not set",
+                message="LOGOS_API_KEY is not set",
             ).model_dump(),
         )
 
