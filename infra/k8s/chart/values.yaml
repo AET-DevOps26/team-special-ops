@@ -42,15 +42,24 @@ services:
     db: true
     healthPath: /actuator/health
     nonRoot: true
+    extraEnv:
+      # Shares the tso DB/schema with user-progress. Keep a separate Flyway
+      # history table and baseline-on-migrate so whichever service starts second
+      # doesn't choke on the already-populated `public` schema.
+      SPRING_FLYWAY_TABLE: flyway_schema_history_catalog
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
+      SPRING_FLYWAY_BASELINE_VERSION: "0"
   chat:
     port: 8083
     replicas: 1
-    db: false # stub today: no datasource configured (matches compose)
+    db: true # reads catalog/user-progress tables + owns chat_question/chat_answer
     healthPath: /actuator/health
     nonRoot: true
     extraEnv:
-      # In-cluster address of the genai service (for when chat's Q&A flow lands).
+      # In-cluster genai address for the spoiler-safe Q&A flow.
       GENAI_BASE_URL: http://genai:8084
+      # NB: chat's own application.yml already sets its Flyway history table +
+      # baseline-on-migrate, so (unlike catalog/user-progress) no flyway env here.
   genai:
     port: 8084
     replicas: 1
@@ -85,6 +94,10 @@ ingress:
   tls:
     enabled: false # true on Azure (cert-manager)
     secretName: ""
+    # cert-manager ClusterIssuer. letsencrypt-staging = high rate limits but
+    # browser-untrusted (use while iterating); letsencrypt-prod = trusted cert
+    # but 5 duplicate-certs/week per hostname (use for the final deploy).
+    clusterIssuer: letsencrypt-prod
 
 # Secrets: dev-only defaults. NEVER commit real values — CD injects them via --set
 # or a values file that is not in git.

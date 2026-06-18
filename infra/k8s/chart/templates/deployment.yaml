@@ -41,6 +41,11 @@ spec:
             - name: http
               containerPort: {{ $svc.port }}
           env:
+            # The web-client nginx addresses backends by FQDN in-cluster (CoreDNS
+            # won't resolve bare names via nginx's resolver). Harmless to the Spring
+            # services, which don't read it.
+            - name: UPSTREAM_DNS_SUFFIX
+              value: ".{{ $.Release.Namespace }}.svc.cluster.local"
             {{- if $svc.db }}
             # DB-backed Spring service: datasource + JWT from config/secret.
             - name: SPRING_DATASOURCE_URL
@@ -63,6 +68,13 @@ spec:
                 secretKeyRef:
                   name: {{ $.Release.Name }}-secrets
                   key: JWT_SECRET
+            # Wait+retry for Postgres on boot instead of crashing if the DB pod
+            # isn't accepting connections yet. Fixes the startup race
+            # deterministically (30 * 5s = 150s, matching the startup probe).
+            - name: SPRING_FLYWAY_CONNECT_RETRIES
+              value: "30"
+            - name: SPRING_FLYWAY_CONNECT_RETRIES_INTERVAL
+              value: "5s"
             {{- end }}
             {{- range $k, $v := $svc.extraEnv }}
             - name: {{ $k }}

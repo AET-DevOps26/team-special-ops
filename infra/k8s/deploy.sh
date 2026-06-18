@@ -6,8 +6,9 @@
 #   ./infra/k8s/deploy.sh azure          # deploy to AKS (see azure-deployment-plan.md)
 #
 # Idempotent: run it on a fresh/wiped namespace or to redeploy — `helm upgrade
-# --install` converges either way. Image tag defaults to the current git SHA, so
-# the cluster always runs exactly what's committed.
+# --install` converges either way. Image tag defaults to `latest` (the moving tag
+# published only by main builds), so a plain run always deploys the newest main.
+# Override with IMAGE_TAG=sha-<sha> to pin/rollback to a specific commit.
 #
 # Secrets are read from the environment so nothing sensitive lives in git. Set
 # them before running (or source a gitignored infra/k8s/.env):
@@ -33,7 +34,7 @@ if [[ -f "$SCRIPT_DIR/.env" ]]; then
   source "$SCRIPT_DIR/.env"
 fi
 
-IMAGE_TAG="${IMAGE_TAG:-sha-$(git rev-parse --short HEAD)}"
+IMAGE_TAG="${IMAGE_TAG:-latest}"
 
 echo ">> Deploying release '$RELEASE' to namespace '$NAMESPACE' ($ENV), image tag: $IMAGE_TAG"
 

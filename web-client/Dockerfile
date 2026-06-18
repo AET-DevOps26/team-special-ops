@@ -21,7 +21,18 @@ RUN pnpm build
 
 # --- Runtime: nginx + static assets only ---
 FROM nginx:1.27-alpine AS runtime
-COPY web-client/nginx.default.conf /etc/nginx/conf.d/default.conf
+# Ship the config as a template so nginx's stock entrypoint runs envsubst on it.
+# 15-local-resolvers.envsh exports $NGINX_LOCAL_RESOLVERS from /etc/resolv.conf,
+# which the template uses for `resolver` — so the same image gets Docker's
+# embedded DNS (127.0.0.11) under compose and CoreDNS under Kubernetes.
+# Opt in to nginx's 15-local-resolvers.envsh (it no-ops unless this is set); it
+# then exports $NGINX_LOCAL_RESOLVERS from /etc/resolv.conf for the template below.
+ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
+# Empty by default so compose resolves bare service names (`catalog`) via Docker
+# DNS. Kubernetes overrides this with `.<namespace>.svc.cluster.local` so CoreDNS
+# can resolve the FQDN. Must be defined (even empty) for envsubst to substitute it.
+ENV UPSTREAM_DNS_SUFFIX=""
+COPY web-client/nginx.default.conf /etc/nginx/templates/default.conf.template
 COPY --from=builder /build/web-client/dist /usr/share/nginx/html
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
