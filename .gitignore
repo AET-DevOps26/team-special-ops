@@ -39,3 +39,18 @@ infra/.env
 
 # Local k8s deploy secrets (never commit)
 infra/k8s/.env
+
+# Terraform (state can contain secrets; .terraform/ is local provider cache)
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+# terraform.tfvars is committed on purpose (non-secret defaults); ignore local
+# secret overrides instead.
+*.auto.tfvars
+override.tf
+override.tf.json
+
+# Ansible
+infra/ansible/*.retry

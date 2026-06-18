@@ -1,0 +1,92 @@
+---
+# Cluster prep + app deploy for AKS, mirroring azure-deployment-plan.md §5-§7.
+# Assumes `az aks get-credentials` has already pointed KUBECONFIG at the cluster
+# that Terraform created. Idempotent: every task converges, so re-runs are safe.
+- name: Prepare AKS and deploy the tso stack
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    # Secrets come from the environment (GitHub Secrets in CD, your shell locally),
+    # never from committed files. Empty is allowed locally but the app won't be
+    # fully functional without them.
+    jwt_secret: "{{ lookup('env', 'JWT_SECRET') }}"
+    postgres_password: "{{ lookup('env', 'POSTGRES_PASSWORD') }}"
+    openrouter_api_key: "{{ lookup('env', 'OPENROUTER_API_KEY') }}"
+
+  tasks:
+    # --- 1. ingress-nginx: the public entry point (provisions an Azure LB IP) ---
+    - name: Add ingress-nginx helm repo
+      kubernetes.core.helm_repository:
+        name: ingress-nginx
+        repo_url: https://kubernetes.github.io/ingress-nginx
+
+    - name: Install/upgrade ingress-nginx
+      kubernetes.core.helm:
+        name: ingress-nginx
+        chart_ref: ingress-nginx/ingress-nginx
+        chart_version: "{{ ingress_nginx_chart_version }}"
+        release_namespace: "{{ ingress_nginx_namespace }}"
+        create_namespace: true
+        wait: true
+        timeout: 10m
+        release_values:
+          controller:
+            service:
+              annotations:
+                # Attaches the DNS label to the public IP Azure assigns, giving the
+                # stable <dns_label>.<location>.cloudapp.azure.com host that
+                # ingress_host / values-azure.yaml point at.
+                service.beta.kubernetes.io/azure-dns-label-name: "{{ dns_label }}"
+
+    # --- 2. cert-manager: automatic Let's Encrypt TLS ---
+    - name: Add jetstack (cert-manager) helm repo
+      kubernetes.core.helm_repository:
+        name: jetstack
+        repo_url: https://charts.jetstack.io
+
+    - name: Install/upgrade cert-manager
+      kubernetes.core.helm:
+        name: cert-manager
+        chart_ref: jetstack/cert-manager
+        chart_version: "{{ cert_manager_chart_version }}"
+        release_namespace: "{{ cert_manager_namespace }}"
+        create_namespace: true
+        wait: true
+        timeout: 10m
+        release_values:
+          crds:
+            enabled: true
+
+    # --- 3. ClusterIssuer the chart's Ingress references by name ---
+    - name: Apply letsencrypt-prod ClusterIssuer
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('template', 'templates/clusterissuer.yaml.j2') | from_yaml }}"
+        wait: true
+
+    # --- 4 + 5. Deploy the existing chart (secrets passed through, not committed) ---
+    # The Secret object is rendered by the chart from these values; cert-manager
+    # owns the TLS secret separately. Image registry stays the GHCR default.
+    - name: Deploy tso stack with Helm
+      kubernetes.core.helm:
+        name: "{{ release_name }}"
+        chart_ref: "{{ chart_path }}"
+        release_namespace: "{{ namespace }}"
+        create_namespace: true
+        values_files:
+          - "{{ values_file }}"
+        wait: true
+        timeout: 10m
+        release_values:
+          image:
+            tag: "{{ image_tag }}"
+          ingress:
+            host: "{{ ingress_host }}"
+          secrets:
+            jwtSecret: "{{ jwt_secret }}"
+            postgresPassword: "{{ postgres_password }}"
+            # NB: the chart wires this into OPENAI_API_KEY only. The genai service
+            # actually expects OPENROUTER_API_KEY — see the "known gap" in the plan;
+            # a small chart change is needed for spoiler-safe chat to work on AKS.
+            openaiApiKey: "{{ openrouter_api_key }}"

@@ -1,0 +1,149 @@
+name: CD (Azure)
+
+# Provisions AKS with Terraform, then prepares the cluster and deploys the Helm
+# chart with Ansible. Manual by default because AKS bills while it runs — a
+# scheduled/auto deploy would quietly burn credit. Flip `deploy` on push if you
+# want merge-to-main -> live (and accept the running cost).
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "What to do"
+        type: choice
+        default: deploy
+        options:
+          - deploy
+          - destroy
+      image_tag:
+        description: "Image tag to deploy (e.g. sha-abc1234). Blank = latest."
+        type: string
+        default: ""
+
+# Never let two infra runs touch the same Terraform state / cluster at once.
+concurrency:
+  group: cd-azure
+  cancel-in-progress: false
+
+permissions:
+  id-token: write # required for azure/login OIDC token exchange
+  contents: read
+
+env:
+  ARM_USE_OIDC: "true"
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+jobs:
+  deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.action == 'deploy' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # OIDC: exchanges the GitHub token for Azure access — no client secret stored.
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.5"
+
+      - name: Terraform init (remote state)
+        working-directory: infra/terraform
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ secrets.TFSTATE_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ secrets.TFSTATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ secrets.TFSTATE_CONTAINER }}" \
+            -backend-config="key=${{ secrets.TFSTATE_KEY }}"
+
+      - name: Terraform apply
+        working-directory: infra/terraform
+        run: terraform apply -auto-approve -input=false
+
+      # Read the outputs Ansible needs (cluster coordinates + live ingress host).
+      - name: Capture Terraform outputs
+        id: tf
+        working-directory: infra/terraform
+        run: |
+          echo "resource_group=$(terraform output -raw resource_group_name)" >> "$GITHUB_OUTPUT"
+          echo "cluster_name=$(terraform output -raw cluster_name)"         >> "$GITHUB_OUTPUT"
+          echo "namespace=$(terraform output -raw namespace)"               >> "$GITHUB_OUTPUT"
+          echo "dns_label=$(terraform output -raw dns_label)"               >> "$GITHUB_OUTPUT"
+          echo "ingress_fqdn=$(terraform output -raw ingress_fqdn)"         >> "$GITHUB_OUTPUT"
+
+      # Merges AKS creds into the runner's kubeconfig; every kubectl/helm/ansible
+      # task after this targets the new cluster.
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group "${{ steps.tf.outputs.resource_group }}" \
+            --name "${{ steps.tf.outputs.cluster_name }}" \
+            --overwrite-existing
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ansible + collections
+        run: |
+          pip install "ansible-core>=2.16" kubernetes
+          ansible-galaxy collection install -r infra/ansible/requirements.yml
+
+      - name: Ansible deploy (cluster prep + Helm)
+        working-directory: infra/ansible
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          ansible-playbook playbook.yml \
+            -e "namespace=${{ steps.tf.outputs.namespace }}" \
+            -e "dns_label=${{ steps.tf.outputs.dns_label }}" \
+            -e "ingress_host=${{ steps.tf.outputs.ingress_fqdn }}" \
+            -e "image_tag=${{ inputs.image_tag != '' && inputs.image_tag || 'latest' }}"
+
+      - name: Summary
+        run: |
+          echo "Deployed. App will be live at: https://${{ steps.tf.outputs.ingress_fqdn }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "(cert-manager may take a minute to issue the Let's Encrypt cert.)"            >> "$GITHUB_STEP_SUMMARY"
+
+  # Manual teardown: `terraform destroy` deletes AKS, disks, and the public IP so
+  # charges stop. Run this from the Actions tab with action=destroy.
+  destroy:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.action == 'destroy' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.5"
+
+      - name: Terraform init (remote state)
+        working-directory: infra/terraform
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ secrets.TFSTATE_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ secrets.TFSTATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ secrets.TFSTATE_CONTAINER }}" \
+            -backend-config="key=${{ secrets.TFSTATE_KEY }}"
+
+      - name: Terraform destroy
+        working-directory: infra/terraform
+        run: terraform destroy -auto-approve -input=false

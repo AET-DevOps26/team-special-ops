@@ -1,0 +1,10 @@
+# Ansible Galaxy collections this playbook needs. Install with:
+#   ansible-galaxy collection install -r infra/ansible/requirements.yml
+collections:
+  # kubernetes.core: k8s, helm, and helm_repository modules (talks to the cluster
+  # via the kubeconfig from `az aks get-credentials`).
+  - name: kubernetes.core
+    version: ">=5.0.0"
+  # community.general: assorted helpers; kept for convenience/portability.
+  - name: community.general
+    version: ">=9.0.0"

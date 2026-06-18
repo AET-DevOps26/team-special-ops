@@ -1,0 +1,34 @@
+# Non-secret knobs for the deploy playbook. Override on the CLI with
+# `-e key=value` (the CD workflow passes the live Terraform outputs this way).
+#
+# Secrets (jwt_secret, postgres_password, openrouter_api_key) are NOT here — they
+# come from the environment via lookup('env', ...) in the playbook, sourced from
+# GitHub Secrets in CD or your shell locally. Never commit real values.
+
+# --- target cluster / app ---------------------------------------------------
+namespace: tso
+release_name: tso
+
+# Path to the existing Helm chart (relative to the repo root / playbook dir).
+chart_path: "{{ playbook_dir }}/../k8s/chart"
+values_file: "{{ chart_path }}/values-azure.yaml"
+
+# Image tag to deploy. CD overrides with sha-<short-sha>; `latest` is the moving
+# main tag for a manual run.
+image_tag: latest
+
+# Public host for the ingress. CD overrides this with the Terraform `ingress_fqdn`
+# output; the dns_label must match what we annotate ingress-nginx with below.
+ingress_host: tso-special-ops.westeurope.cloudapp.azure.com
+dns_label: tso-special-ops
+
+# --- ingress-nginx ----------------------------------------------------------
+ingress_nginx_namespace: ingress-nginx
+ingress_nginx_chart_version: "4.11.3"
+
+# --- cert-manager -----------------------------------------------------------
+cert_manager_namespace: cert-manager
+cert_manager_chart_version: "v1.15.3"
+# Email Let's Encrypt uses for expiry notices on the ACME account.
+letsencrypt_email: devops@team-special-ops.example.com
+cluster_issuer_name: letsencrypt-prod
