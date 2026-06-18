@@ -1,6 +1,7 @@
 package com.tso.userprogress.security;
 
 import java.util.Arrays;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -20,6 +21,12 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
   private final JwtTokenProvider jwtTokenProvider;
+
+  // Browser origins allowed to call this service (comma-separated). Defaults to the
+  // local dev/compose web client; in Kubernetes the Helm chart injects the deployed
+  // origin via APP_CORS_ALLOWED_ORIGINS, so no environment-specific value is hardcoded.
+  @Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:5173,http://localhost:8080}")
+  private String[] allowedOrigins;
 
   public SecurityConfig(JwtTokenProvider jwtTokenProvider) {
     this.jwtTokenProvider = jwtTokenProvider;
@@ -43,10 +50,7 @@ public class SecurityConfig {
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
-    // Allowed browser origins: dev servers and the docker-compose web client
-    // (served at :8080 and reverse-proxied to this service).
-    configuration.setAllowedOrigins(
-        Arrays.asList("http://localhost:3000", "http://localhost:5173", "http://localhost:8080"));
+    configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
     // Without explicit methods, Spring permits only GET/HEAD, so every POST/PUT
     // (e.g. login) was rejected with 403 regardless of origin.
     configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
