@@ -41,6 +41,11 @@ spec:
             - name: http
               containerPort: {{ $svc.port }}
           env:
+            # The web-client nginx addresses backends by FQDN in-cluster (CoreDNS
+            # won't resolve bare names via nginx's resolver). Harmless to the Spring
+            # services, which don't read it.
+            - name: UPSTREAM_DNS_SUFFIX
+              value: ".{{ $.Release.Namespace }}.svc.cluster.local"
             {{- if $svc.db }}
             # DB-backed Spring service: datasource + JWT from config/secret.
             - name: SPRING_DATASOURCE_URL
