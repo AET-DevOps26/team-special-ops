@@ -149,7 +149,7 @@ services:
       SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
       SPRING_FLYWAY_BASELINE_VERSION: "0"
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-min-32-chars-change-in-production}
-      GENAI_BASE_URL: http://traefik/api
+      GENAI_BASE_URL: http://genai:8084
 
   genai:
     build:

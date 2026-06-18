@@ -75,11 +75,11 @@ All traffic goes through **Traefik**, the reverse proxy API gateway running on p
 
 | Service | URL                                | Purpose |
 |---|------------------------------------|---|
-| Web app | http://localhost/                  | React SPA |
-| User Progress API | http://localhost/api/user-progress | Auth + watch progress |
-| Catalog API | http://localhost/api/catalog       | Series + episodes |
-| Chat API | http://localhost/api/chat          | Q&A orchestration |
-| GenAI API | http://localhost/api/genai         | LLM calls |
+| Web app | http://localhost:8080/             | React SPA |
+| User Progress API | http://localhost:8080/api/user-progress | Auth + watch progress |
+| Catalog API | http://localhost:8080/api/catalog       | Series + episodes |
+| Chat API | http://localhost:8080/api/chat          | Q&A orchestration |
+| GenAI API | http://localhost:8080/api/genai         | LLM calls |
 | Traefik Dashboard | http://localhost:8090/dashboard/   | Routing & config |
 
 Traefik routes `/api/*` paths to the backend services
