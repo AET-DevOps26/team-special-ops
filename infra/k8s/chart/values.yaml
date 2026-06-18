@@ -22,6 +22,7 @@ image:
 #   db          true  -> inject SPRING_DATASOURCE_* + JWT_SECRET (DB-backed Spring service)
 #               false -> no datasource env (stub / stateless service)
 #   healthPath  HTTP path for liveness/readiness/startup probes
+#   metricsPath Prometheus scrape path (omit -> no ServiceMonitor for this service)
 #   nonRoot     run the container as UID 1000 (the Spring/genai images do; nginx does not)
 #   extraEnv    service-specific plain env (non-secret)
 services:
@@ -30,6 +31,7 @@ services:
     replicas: 1
     db: true
     healthPath: /actuator/health
+    metricsPath: /actuator/prometheus
     nonRoot: true
     extraEnv:
       # Keep user-progress' Flyway history separate from catalog's in the shared DB.
@@ -41,6 +43,7 @@ services:
     replicas: 1
     db: true
     healthPath: /actuator/health
+    metricsPath: /actuator/prometheus
     nonRoot: true
     extraEnv:
       # Shares the tso DB/schema with user-progress. Keep a separate Flyway
@@ -54,6 +57,7 @@ services:
     replicas: 1
     db: true # reads catalog/user-progress tables + owns chat_question/chat_answer
     healthPath: /actuator/health
+    metricsPath: /actuator/prometheus
     nonRoot: true
     extraEnv:
       # In-cluster genai address for the spoiler-safe Q&A flow.
@@ -65,6 +69,7 @@ services:
     replicas: 1
     db: false
     healthPath: /genai/health
+    metricsPath: /metrics
     nonRoot: true
   web-client:
     port: 80
@@ -115,6 +120,18 @@ resources:
     cpu: "1"
     memory: 768Mi
 
-# Reserved for later PRs (HPA, ServiceMonitor); off by default.
+# Reserved for a later PR (HPA); off by default.
 autoscaling:
   enabled: false
+
+# Observability for a Prometheus Operator (Rancher Monitoring / kube-prometheus-stack):
+# a ServiceMonitor per metrics-exposing service, a PrometheusRule with alerts, and a
+# Grafana dashboard ConfigMap. Off by default; enabled per-environment where the
+# operator CRDs exist (see values-rancher.yaml).
+monitoring:
+  enabled: false
+  interval: 30s
+  # Extra labels on the ServiceMonitor/PrometheusRule. Some operators only select
+  # objects carrying a specific label (e.g. release: rancher-monitoring). Leave empty
+  # if the cluster's Prometheus selects all; set it if metrics/alerts don't appear.
+  extraLabels: {}

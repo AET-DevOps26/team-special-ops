@@ -1,0 +1,18 @@
+{{/*
+The Grafana overview dashboard, shipped as a ConfigMap. The grafana_dashboard="1"
+label makes the Grafana sidecar (Rancher Monitoring / kube-prometheus-stack) import
+it automatically, so the dashboard appears on every fresh deploy — no hand-clicking.
+The JSON is the same artifact used by the docker-compose Grafana.
+*/}}
+{{- if .Values.monitoring.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-grafana-dashboard
+  labels:
+    grafana_dashboard: "1"
+    {{- include "tso.labels" . | nindent 4 }}
+data:
+  tso-overview.json: |
+{{ .Files.Get "dashboards/tso-overview.json" | indent 4 }}
+{{- end }}
