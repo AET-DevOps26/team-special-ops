@@ -73,14 +73,14 @@ Open the app at **http://localhost:8080** and sign in with the seeded demo user:
 
 All traffic goes through **Traefik**, the reverse proxy API gateway running on port 8080:
 
-| Service | URL                                | Purpose |
-|---|------------------------------------|---|
-| Web app | http://localhost:8080/             | React SPA |
+| Service | URL                                     | Purpose |
+|---|-----------------------------------------|---|
+| Web app | http://localhost:8080/                  | React SPA |
 | User Progress API | http://localhost:8080/api/user-progress | Auth + watch progress |
 | Catalog API | http://localhost:8080/api/catalog       | Series + episodes |
 | Chat API | http://localhost:8080/api/chat          | Q&A orchestration |
 | GenAI API | http://localhost:8080/api/genai         | LLM calls |
-| Traefik Dashboard | http://localhost:8090/dashboard/   | Routing & config |
+
 
 Traefik routes `/api/*` paths to the backend services
 and `/` to the static web app, all over Docker's internal network—so there's a single origin and no CORS to configure.
@@ -90,16 +90,17 @@ and `/` to the static web app, all over Docker's internal network—so there's a
 The individual service ports are also published for direct access—useful for Swagger UIs and debugging:
 
 
-| Service | URL |
-|---|---|
-| Web app | http://localhost:8080 |
-| user-progress API docs | http://localhost:8081/swagger-ui.html |
-| catalog API docs | http://localhost:8082/swagger-ui.html |
-| chat API docs | http://localhost:8083/swagger-ui.html |
-| genai API docs | http://localhost:8084/docs |
-| Postgres | `localhost:5432` (default user/password/db: `tso`) |
-| Prometheus | http://localhost:9090 |
+| Service | URL                                                    |
+|---|--------------------------------------------------------|
+| Web app | http://localhost:8080                                  |
+| user-progress API docs | http://localhost:8081/swagger-ui.html                  |
+| catalog API docs | http://localhost:8082/swagger-ui.html                  |
+| chat API docs | http://localhost:8083/swagger-ui.html                  |
+| genai API docs | http://localhost:8084/docs                             |
+| Postgres | `localhost:5432` (default user/password/db: `tso`)     |
+| Prometheus | http://localhost:9090                                  |
 | Grafana | http://localhost:3001 (default login `admin` / `admin`) |
+| Traefik Dashboard | http://localhost:8000/dashboard/ for Routing & config  |
 
 ## Monitoring & observability
 
