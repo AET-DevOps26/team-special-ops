@@ -28,6 +28,10 @@ FROM nginx:1.27-alpine AS runtime
 # Opt in to nginx's 15-local-resolvers.envsh (it no-ops unless this is set); it
 # then exports $NGINX_LOCAL_RESOLVERS from /etc/resolv.conf for the template below.
 ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
+# Empty by default so compose resolves bare service names (`catalog`) via Docker
+# DNS. Kubernetes overrides this with `.<namespace>.svc.cluster.local` so CoreDNS
+# can resolve the FQDN. Must be defined (even empty) for envsubst to substitute it.
+ENV UPSTREAM_DNS_SUFFIX=""
 COPY web-client/nginx.default.conf /etc/nginx/templates/default.conf.template
 COPY --from=builder /build/web-client/dist /usr/share/nginx/html
 EXPOSE 80
