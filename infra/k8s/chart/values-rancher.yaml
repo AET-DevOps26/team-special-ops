@@ -14,12 +14,11 @@ ingress:
   host: team-special-ops.stud.k8s.aet.cit.tum.de
   # cert-manager issues a Let's Encrypt cert via ACME HTTP-01 (same pattern other
   # teams use); the nginx ingress then serves HTTPS on :443 and 308-redirects
-  # HTTP -> HTTPS. Using STAGING while we iterate (deploy/wipe cycles would burn
-  # prod's 5-duplicate-certs/week limit). Browsers will warn "untrusted" until we
-  # flip this to letsencrypt-prod for the final graded deploy.
+  # HTTP -> HTTPS. Using PROD for a browser-trusted cert. (letsencrypt-staging is
+  # the fallback while iterating — higher rate limits, but browser-untrusted.)
   tls:
     enabled: true
-    clusterIssuer: letsencrypt-staging
+    clusterIssuer: letsencrypt-prod
 
 # Rancher provides a default StorageClass; leave empty to use it.
 postgres:
