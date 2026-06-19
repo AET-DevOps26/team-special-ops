@@ -1,7 +1,7 @@
 import os
 from dataclasses import dataclass
 
-LOGOS_DEFAULT_BASE_URL = "https://logos.aet.cit.tum.de/v1"
+LOGOS_DEFAULT_BASE_URL = "https://logos.aet.cit.tum.de:8080/v1"
 LOGOS_DEFAULT_MODEL = "openai/gpt-oss-120b"
 
 
@@ -18,5 +18,5 @@ def load_settings() -> Settings:
         logos_api_key=os.environ.get("LOGOS_API_KEY", ""),
         llm_model=os.environ.get("LLM_MODEL", LOGOS_DEFAULT_MODEL),
         llm_base_url=os.environ.get("LLM_BASE_URL", LOGOS_DEFAULT_BASE_URL),
-        max_context_chars=int(os.environ.get("MAX_CONTEXT_CHARS", "12000")),
+        max_context_chars=int(os.environ.get("MAX_CONTEXT_CHARS", "9999999")),
     )
