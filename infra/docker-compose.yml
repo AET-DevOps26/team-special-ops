@@ -4,12 +4,12 @@
 #
 # Optional: copy infra/env.example to infra/.env and adjust values.
 # Access services via Traefik:
-#   - Web Client: http://localhost
-#   - User Progress API: http://localhost/api/user-progress
-#   - Catalog API: http://localhost/api/catalog
-#   - Chat API: http://localhost/api/chat
-#   - GenAI API: http://localhost/api/genai
-#   - Traefik Dashboard: http://localhost:8090/dashboard/
+#   - Web Client: http://localhost:8080
+#   - User Progress API: http://localhost:8080/api/user-progress
+#   - Catalog API: http://localhost:8080/api/catalog
+#   - Chat API: http://localhost:8080/api/chat
+#   - GenAI API: http://localhost:8080/api/genai
+#   - Traefik Dashboard: http://localhost:8000/dashboard/
 
 name: team-special-ops
 
