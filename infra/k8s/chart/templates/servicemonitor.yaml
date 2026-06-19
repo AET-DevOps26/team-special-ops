@@ -1,0 +1,34 @@
+{{/*
+One ServiceMonitor per metrics-exposing service (those with a metricsPath). The
+cluster's Prometheus Operator (Rancher Monitoring) discovers these and scrapes the
+service's /actuator/prometheus (Spring) or /metrics (genai) endpoint.
+*/}}
+{{- if .Values.monitoring.enabled }}
+{{- range $name, $svc := .Values.services }}
+{{- if $svc.metricsPath }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ $.Release.Name }}-{{ $name }}
+  labels:
+    {{- include "tso.labels" $ | nindent 4 }}
+    app.kubernetes.io/name: {{ $name }}
+    {{- with $.Values.monitoring.extraLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  # jobLabel makes the Prometheus `job` label the service name (catalog/chat/...),
+  # so it matches the alert expressions in the PrometheusRule
+  # (up{job=~"user-progress|catalog|chat|genai"}).
+  jobLabel: app.kubernetes.io/name
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+  endpoints:
+    - port: http
+      path: {{ $svc.metricsPath }}
+      interval: {{ $.Values.monitoring.interval }}
+{{- end }}
+{{- end }}
+{{- end }}
