@@ -43,7 +43,7 @@ Optional — the Postgres credentials and JWT settings have dev-only defaults
 
 ## Ask a question (spoiler-safe chat)
 
-1. Copy `infra/env.example` to `infra/.env` and add your `OPENROUTER_API_KEY`.
+1. Copy `infra/env.example` to `infra/.env` and add your `LOGOS_API_KEY`.
 2. Start the stack: `docker compose -f infra/docker-compose.yml up --build`
 3. Open http://localhost:8080, sign in, open **Stranger Things**, and set your
    current episode on the episode list.

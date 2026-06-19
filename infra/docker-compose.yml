@@ -167,10 +167,9 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-      LLM_MODEL: ${LLM_MODEL:-nex-agi/nex-n2-pro:free}
-      OPENROUTER_HTTP_REFERER: ${OPENROUTER_HTTP_REFERER:-http://localhost:8080}
-      OPENROUTER_APP_NAME: ${OPENROUTER_APP_NAME:-sceneit-dev}
+      LOGOS_API_KEY: ${LOGOS_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-openai/gpt-oss-120b}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://logos.aet.cit.tum.de/v1}
 
   web-client:
     build:
