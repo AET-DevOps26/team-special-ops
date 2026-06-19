@@ -20,7 +20,7 @@ name: Deploy to cluster
 #   KUBECONFIG_B64     base64 of a kubeconfig built around a Rancher API token
 #   JWT_SECRET         app JWT signing secret (same value as infra/k8s/.env)
 #   POSTGRES_PASSWORD  db password (same value as infra/k8s/.env)
-#   OPENAI_API_KEY     (optional) enables the GenAI path
+#   LOGOS_API_KEY      (optional) enables the GenAI path
 # Until those exist the `deploy` job fails at the kubeconfig step; `build` still
 # works (it only needs the built-in GITHUB_TOKEN).
 
@@ -162,7 +162,7 @@ jobs:
       NAMESPACE: team-special-ops
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      LOGOS_API_KEY: ${{ secrets.LOGOS_API_KEY }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
