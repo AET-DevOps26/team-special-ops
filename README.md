@@ -55,7 +55,7 @@ Quick API check (replace `$TOKEN` and `$SERIES_ID`):
 ```bash
 curl -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"seriesId":"958661e6-226c-5117-9318-5e3265598767","question":"Who is Eleven?"}' \
-  http://localhost:8080/chat/questions
+  http://localhost:8080/api/chat/questions
 ```
 
 Spoiler trap checks: at progress S1E1, asking about S2 characters should not leak
@@ -69,23 +69,38 @@ Open the app at **http://localhost:8080** and sign in with the seeded demo user:
 |-------|----------|
 | `demo@example.com` | `password123` |
 
-The browser only ever talks to `:8080`. A reverse proxy there serves the web app
-and forwards API calls to the backend services over Docker's internal network, so
-there's a single origin and no CORS to configure.
+### API Gateway (Traefik)
 
-The individual service ports are also published for development — handy for
-Swagger UIs, `curl`, and debugging:
+All traffic goes through **Traefik**, the reverse proxy API gateway running on port 8080:
 
-| Service | URL |
-|---|---|
-| Web app | http://localhost:8080 |
-| user-progress API docs | http://localhost:8081/swagger-ui.html |
-| catalog API docs | http://localhost:8082/swagger-ui.html |
-| chat API docs | http://localhost:8083/swagger-ui.html |
-| genai API docs | http://localhost:8084/docs |
-| Postgres | `localhost:5432` (default user/password/db: `tso`) |
-| Prometheus | http://localhost:9090 |
+| Service | URL                                     | Purpose |
+|---|-----------------------------------------|---|
+| Web app | http://localhost:8080/                  | React SPA |
+| User Progress API | http://localhost:8080/api/user-progress | Auth + watch progress |
+| Catalog API | http://localhost:8080/api/catalog       | Series + episodes |
+| Chat API | http://localhost:8080/api/chat          | Q&A orchestration |
+| GenAI API | http://localhost:8080/api/genai         | LLM calls |
+
+
+Traefik routes `/api/*` paths to the backend services
+and `/` to the static web app, all over Docker's internal network—so there's a single origin and no CORS to configure.
+
+### Development & Debugging
+
+The individual service ports are also published for direct access—useful for Swagger UIs and debugging:
+
+
+| Service | URL                                                    |
+|---|--------------------------------------------------------|
+| Web app | http://localhost:8080                                  |
+| user-progress API docs | http://localhost:8081/swagger-ui.html                  |
+| catalog API docs | http://localhost:8082/swagger-ui.html                  |
+| chat API docs | http://localhost:8083/swagger-ui.html                  |
+| genai API docs | http://localhost:8084/docs                             |
+| Postgres | `localhost:5432` (default user/password/db: `tso`)     |
+| Prometheus | http://localhost:9090                                  |
 | Grafana | http://localhost:3001 (default login `admin` / `admin`) |
+| Traefik Dashboard | http://localhost:8000/dashboard/ for Routing & config  |
 
 ## Monitoring & observability
 

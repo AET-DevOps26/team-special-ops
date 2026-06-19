@@ -1,12 +1,38 @@
-# Full local stack: Postgres + Spring services + GenAI + static web client.
+# Full local stack: Postgres + Spring services + GenAI + static web client + Traefik API Gateway.
 # Run from repository root:
 #   docker compose -f infra/docker-compose.yml up --build
 #
 # Optional: copy infra/env.example to infra/.env and adjust values.
+# Access services via Traefik:
+#   - Web Client: http://localhost:8080
+#   - User Progress API: http://localhost:8080/api/user-progress
+#   - Catalog API: http://localhost:8080/api/catalog
+#   - Chat API: http://localhost:8080/api/chat
+#   - GenAI API: http://localhost:8080/api/genai
+#   - Traefik Dashboard: http://localhost:8000/dashboard/
 
 name: team-special-ops
 
 services:
+  traefik:
+    image: traefik:v3.7
+    command:
+      - --api.insecure=true
+      - --api.dashboard=true
+      - --entrypoints.web.address=:80
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --metrics.prometheus=true
+      - --metrics.prometheus.addEntryPointsLabels=true
+      - --metrics.prometheus.addServicesLabels=true
+    ports:
+      - "8080:80"
+      - "8000:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      - traefik.enable=true
+      - traefik.http.middlewares.api-strip.stripprefix.prefixes=/api
   postgres:
     image: postgres:16-alpine
     environment:
@@ -34,6 +60,12 @@ services:
         APP_PORT: 8081
     ports:
       - "8081:8081"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.user-progress.rule=PathPrefix(`/api/user-progress`)
+      - traefik.http.routers.user-progress.entrypoints=web
+      - traefik.http.services.user-progress.loadbalancer.server.port=8081
+      - traefik.http.routers.user-progress.middlewares=api-strip@docker
     depends_on:
       postgres:
         condition: service_healthy
@@ -64,6 +96,12 @@ services:
         APP_PORT: 8082
     ports:
       - "8082:8082"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.catalog.rule=PathPrefix(`/api/catalog`)
+      - traefik.http.routers.catalog.entrypoints=web
+      - traefik.http.services.catalog.loadbalancer.server.port=8082
+      - traefik.http.routers.catalog.middlewares=api-strip@docker
     depends_on:
       postgres:
         condition: service_healthy
@@ -88,6 +126,12 @@ services:
         APP_PORT: 8083
     ports:
       - "8083:8083"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.chat.rule=PathPrefix(`/api/chat`)
+      - traefik.http.routers.chat.entrypoints=web
+      - traefik.http.services.chat.loadbalancer.server.port=8083
+      - traefik.http.routers.chat.middlewares=api-strip@docker
     depends_on:
       postgres:
         condition: service_healthy
@@ -113,6 +157,12 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8084:8084"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.genai.rule=PathPrefix(`/api/genai`)
+      - traefik.http.routers.genai.entrypoints=web
+      - traefik.http.services.genai.loadbalancer.server.port=8084
+      - traefik.http.routers.genai.middlewares=api-strip@docker
     depends_on:
       postgres:
         condition: service_healthy
@@ -125,8 +175,12 @@ services:
     build:
       context: ..
       dockerfile: web-client/Dockerfile
-    ports:
-      - "8080:80"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.web-client.rule=PathPrefix(`/`)
+      - traefik.http.routers.web-client.entrypoints=web
+      - traefik.http.routers.web-client.priority=1
+      - traefik.http.services.web-client.loadbalancer.server.port=80
 
   prometheus:
     image: prom/prometheus:v2.55.1
@@ -137,10 +191,16 @@ services:
     ports:
       - "9090:9090"
     depends_on:
-      - user-progress
-      - catalog
-      - chat
-      - genai
+      traefik:
+        condition: service_started
+      user-progress:
+        condition: service_started
+      catalog:
+        condition: service_started
+      chat:
+        condition: service_started
+      genai:
+        condition: service_started
 
   grafana:
     image: grafana/grafana:11.3.0
