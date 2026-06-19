@@ -12,7 +12,7 @@ public class CorsConfig implements WebMvcConfigurer {
   // Browser origins allowed to call this service (comma-separated). Defaults to the
   // local dev/compose web client; in Kubernetes the Helm chart injects the deployed
   // origin via APP_CORS_ALLOWED_ORIGINS, so no environment-specific value is hardcoded.
-  @Value("${app.cors.allowed-origins:http://localhost:8080,http://localhost:5173}")
+  @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:8080}")
   private String[] allowedOrigins;
 
   @Override
