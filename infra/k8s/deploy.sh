@@ -3,7 +3,9 @@
 # One-command deploy for the tso stack.
 #
 #   ./infra/k8s/deploy.sh rancher        # deploy to the course Rancher cluster
-#   ./infra/k8s/deploy.sh azure          # deploy to AKS (see azure-deployment-plan.md)
+#
+# Azure no longer uses this Helm chart — it runs the docker-compose stack on a
+# Linux VM instead (see infra/terraform + infra/ansible + docker-compose.azure.yml).
 #
 # Idempotent: run it on a fresh/wiped namespace or to redeploy — `helm upgrade
 # --install` converges either way. Image tag defaults to `latest` (the moving tag
@@ -17,8 +19,8 @@
 set -euo pipefail
 
 ENV="${1:-}"
-if [[ "$ENV" != "rancher" && "$ENV" != "azure" ]]; then
-  echo "usage: $0 <rancher|azure>" >&2
+if [[ "$ENV" != "rancher" ]]; then
+  echo "usage: $0 rancher" >&2
   exit 1
 fi
 

@@ -1,62 +1,65 @@
-# Ansible — AKS cluster prep + app deploy
+# Ansible — Azure VM configuration + app deploy
 
-Takes the bare AKS cluster from [`../terraform`](../terraform) and makes it serve
-the app over HTTPS, codifying §5–§7 of
-[azure-deployment-plan.md](../../docs/project-guidelines/azure-deployment-plan.md).
+Takes the bare Linux VM from [`../terraform`](../terraform) and makes it serve the
+app over HTTPS by installing Docker and running the existing
+[`docker-compose`](../docker-compose.yml) stack with the
+[Azure overlay](../docker-compose.azure.yml).
 
-The playbook runs against `localhost` and talks to the cluster through the
-kubeconfig that `az aks get-credentials` writes — there are no SSH hosts.
+The playbook runs **over SSH** against the VM (no Kubernetes, no Helm). The host
+is not committed: Terraform's `public_ip` output is passed at run time via
+`--inventory "<ip>,"`.
 
 | File | Purpose |
 |---|---|
-| `requirements.yml` | Galaxy collections (`kubernetes.core`, `community.general`) |
-| `inventory.ini` | Just `localhost` (local connection) |
-| `group_vars/all.yml` | Non-secret knobs (namespace, host, chart path, versions) |
-| `playbook.yml` | The ordered deploy: ingress-nginx → cert-manager → ClusterIssuer → Helm |
-| `templates/clusterissuer.yaml.j2` | Let's Encrypt `ClusterIssuer` the chart references |
+| `requirements.yml` | Galaxy collections (`community.docker`, `community.general`) |
+| `inventory.ini` | Placeholder — the VM host is passed dynamically (`--inventory`) |
+| `group_vars/all.yml` | Non-secret knobs (app dir, domain, image tag, LE email, LLM) |
+| `playbook.yml` | Install Docker → ship compose + observability → template `.env` → compose up |
+| `templates/env.j2` | The `.env` rendered onto the VM (secrets + config) |
 | `ansible.cfg` | Inventory + sensible defaults |
 
 ## What the playbook does (in order)
 
-1. Installs **ingress-nginx** (Helm), annotating its Service with
-   `azure-dns-label-name=<dns_label>` so the Azure public IP gets the stable
-   `<dns_label>.<location>.cloudapp.azure.com` host.
-2. Installs **cert-manager** (Helm, `crds.enabled=true`).
-3. Applies the **`letsencrypt-prod` ClusterIssuer** the chart's Ingress
-   references.
-4. Deploys the **existing chart** ([`../k8s/chart`](../k8s/chart)) with
-   `values-azure.yaml`, passing `image.tag`, `ingress.host`, and the secrets
-   through `--set` — never from a committed file.
+1. Installs **Docker CE + the compose plugin** from Docker's apt repo.
+2. Creates `app_dir` (default `/opt/tso`) and copies `docker-compose.yml`,
+   `docker-compose.azure.yml`, and `observability/` to the VM.
+3. Templates `.env` onto the VM (Postgres/JWT/LOGOS secrets + `DOMAIN`,
+   `IMAGE_TAG`, `LETSENCRYPT_EMAIL`, LLM config) with `0600` perms.
+4. Runs `community.docker.docker_compose_v2` to **pull the GHCR images** and bring
+   the stack up (`build: never` — no compiling on the VM). Traefik then terminates
+   TLS with a Let's Encrypt cert for `DOMAIN`.
 
 ## Secrets
 
 Read from the environment (never committed):
 
-- `JWT_SECRET`, `POSTGRES_PASSWORD`, `OPENROUTER_API_KEY`
+- `JWT_SECRET`, `POSTGRES_PASSWORD`, `LOGOS_API_KEY`
 
-In CD these come from GitHub Secrets; locally, export them in your shell.
-
-> **Known gap:** the chart wires the provided key into `OPENAI_API_KEY`, but the
-> genai service expects `OPENROUTER_API_KEY`. Spoiler-safe chat won't work on the
-> cluster until a small chart change injects `OPENROUTER_API_KEY` into genai —
-> see the plan's "known gap" note.
+In CD these come from GitHub Secrets; locally, export them in your shell. They are
+written into the VM's `.env` (`0600`) and consumed by the compose stack.
 
 ## Run it locally
 
 ```bash
-# 1. cluster must already exist (terraform apply) and creds be loaded:
-az aks get-credentials -g rg-tso -n aks-tso
+# 1. VM must already exist (terraform apply). Grab its coordinates:
+cd ../terraform
+IP=$(terraform output -raw public_ip)
+USER=$(terraform output -raw admin_username)
+FQDN=$(terraform output -raw fqdn)
+cd ../ansible
 
 # 2. install collections once:
 ansible-galaxy collection install -r requirements.yml
-pip install kubernetes        # the kubernetes.core modules need the python client
+pip install docker        # the community.docker modules need the Python SDK
 
-# 3. deploy (override vars to match your Terraform outputs):
-export JWT_SECRET=... POSTGRES_PASSWORD=... OPENROUTER_API_KEY=...
+# 3. deploy (SSH key is the private half of admin_ssh_public_key):
+export JWT_SECRET=... POSTGRES_PASSWORD=... LOGOS_API_KEY=...
 ansible-playbook playbook.yml \
-  -e ingress_host="$(terraform -chdir=../terraform output -raw ingress_fqdn)" \
-  -e dns_label="$(terraform -chdir=../terraform output -raw dns_label)" \
-  -e image_tag="sha-$(git rev-parse --short HEAD)"
+  --inventory "${IP}," \
+  --user "${USER}" \
+  --private-key ~/.ssh/tso_azure \
+  -e "domain=${FQDN}" \
+  -e "image_tag=sha-$(git rev-parse --short HEAD)"
 ```
 
 In CI this is driven by [`.github/workflows/cd-azure.yml`](../../.github/workflows/cd-azure.yml),

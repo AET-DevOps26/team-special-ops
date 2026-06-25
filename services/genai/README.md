@@ -10,7 +10,7 @@ tutor). Off campus you need [eduVPN](https://www.eduvpn.org/). Never commit real
 ```bash
 export LOGOS_API_KEY=lg-...
 export LLM_MODEL=openai/gpt-oss-120b
-# export LLM_BASE_URL=https://logos.aet.cit.tum.de/v1   # default
+# export LLM_BASE_URL=https://logos.aet.cit.tum.de:8080/v1   # default
 ```
 
 ## Run

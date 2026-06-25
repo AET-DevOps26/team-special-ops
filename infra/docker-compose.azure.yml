@@ -1,0 +1,80 @@
+# Azure VM overlay for the local stack. Used ONLY on the VM, layered on top of the
+# base compose so local dev (docker-compose.yml alone) is untouched:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.azure.yml pull
+#   docker compose -f docker-compose.yml -f docker-compose.azure.yml up -d --no-build
+#
+# What it changes vs the base:
+#   - Pulls prebuilt GHCR images (image: ...:${IMAGE_TAG}) instead of building.
+#   - Turns Traefik into a public TLS gateway: :443 websecure entrypoint, an
+#     HTTP->HTTPS redirect, and a Let's Encrypt (ACME HTTP-01) cert resolver.
+#   - Pins every router to Host(`${DOMAIN}`) on the websecure entrypoint with the
+#     `le` cert resolver, so Traefik requests one cert for the VM's FQDN.
+#
+# Required env (templated into .env by Ansible from Terraform outputs + secrets):
+#   DOMAIN, IMAGE_TAG, LETSENCRYPT_EMAIL (+ the app secrets the base file reads).
+
+services:
+  traefik:
+    # Full command replaces the base one (command is overridden, not merged):
+    # add the websecure entrypoint, the global HTTP->HTTPS redirect, and ACME.
+    command:
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --certificatesresolvers.le.acme.email=${LETSENCRYPT_EMAIL}
+      - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.le.acme.httpchallenge=true
+      - --certificatesresolvers.le.acme.httpchallenge.entrypoint=web
+      - --metrics.prometheus=true
+      - --metrics.prometheus.addEntryPointsLabels=true
+      - --metrics.prometheus.addServicesLabels=true
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Persist issued certs/account across restarts so we don't re-request on
+      # every redeploy (Let's Encrypt has weekly rate limits).
+      - traefik_letsencrypt:/letsencrypt
+
+  user-progress:
+    image: ghcr.io/aet-devops26/tso-user-progress:${IMAGE_TAG:-latest}
+    labels:
+      - traefik.http.routers.user-progress.rule=Host(`${DOMAIN}`) && PathPrefix(`/api/user-progress`)
+      - traefik.http.routers.user-progress.entrypoints=websecure
+      - traefik.http.routers.user-progress.tls.certresolver=le
+
+  catalog:
+    image: ghcr.io/aet-devops26/tso-catalog:${IMAGE_TAG:-latest}
+    labels:
+      - traefik.http.routers.catalog.rule=Host(`${DOMAIN}`) && PathPrefix(`/api/catalog`)
+      - traefik.http.routers.catalog.entrypoints=websecure
+      - traefik.http.routers.catalog.tls.certresolver=le
+
+  chat:
+    image: ghcr.io/aet-devops26/tso-chat:${IMAGE_TAG:-latest}
+    labels:
+      - traefik.http.routers.chat.rule=Host(`${DOMAIN}`) && PathPrefix(`/api/chat`)
+      - traefik.http.routers.chat.entrypoints=websecure
+      - traefik.http.routers.chat.tls.certresolver=le
+
+  genai:
+    image: ghcr.io/aet-devops26/tso-genai:${IMAGE_TAG:-latest}
+    labels:
+      - traefik.http.routers.genai.rule=Host(`${DOMAIN}`) && PathPrefix(`/api/genai`)
+      - traefik.http.routers.genai.entrypoints=websecure
+      - traefik.http.routers.genai.tls.certresolver=le
+
+  web-client:
+    image: ghcr.io/aet-devops26/tso-web-client:${IMAGE_TAG:-latest}
+    labels:
+      - traefik.http.routers.web-client.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.web-client.entrypoints=websecure
+      - traefik.http.routers.web-client.tls.certresolver=le
+      - traefik.http.routers.web-client.priority=1
+
+volumes:
+  traefik_letsencrypt:

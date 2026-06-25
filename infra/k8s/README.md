@@ -1,8 +1,12 @@
 # Kubernetes deployment (Helm)
 
 One Helm chart deploys the whole stack — Postgres + the four services + the web
-client — to any Kubernetes cluster. The same chart targets the course **Rancher**
-cluster and **Azure/AKS**; only a values file differs.
+client — to the course **Rancher** Kubernetes cluster.
+
+> Azure does **not** use this chart. The cloud environment runs the
+> [`docker-compose`](../docker-compose.yml) stack on a single Linux VM — see
+> [`../terraform`](../terraform), [`../ansible`](../ansible), and
+> `docs/project-guidelines/azure-deployment-plan.md`.
 
 See `docs/project-guidelines/kubernetes-deployment-plan.md` for the full rationale.
 
@@ -82,6 +86,5 @@ kubectl -n team-special-ops delete pvc -l app.kubernetes.io/name=postgres
 
 ## Not yet included (later PRs)
 
-- `values-azure.yaml` + TLS via cert-manager (Azure plan)
 - HorizontalPodAutoscalers
 - ServiceMonitor / PrometheusRule for kube-prometheus-stack

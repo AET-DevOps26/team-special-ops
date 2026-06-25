@@ -10,48 +10,40 @@ variable "resource_group_name" {
   default     = "rg-tso"
 }
 
-variable "cluster_name" {
-  description = "AKS cluster name."
-  type        = string
-  default     = "aks-tso"
-}
-
-variable "dns_prefix" {
-  description = "DNS prefix for the AKS API server FQDN."
-  type        = string
-  default     = "tso"
-}
-
-variable "kubernetes_version" {
-  description = "Kubernetes version for the cluster. Empty string lets AKS pick the default for the region."
-  type        = string
-  default     = ""
-}
-
-variable "node_count" {
-  description = "Number of worker nodes in the default pool. 2 gives headroom and lets self-healing be demoed."
-  type        = number
-  default     = 2
-}
-
-variable "node_size" {
-  description = "VM size for worker nodes. Standard_B2s is the cheap burstable baseline for a course demo."
+variable "vm_size" {
+  description = "VM size for the app host. Standard_B2s is the cheap burstable baseline for a course demo; bump to B2ms/B4ms if the JVM services need more RAM."
   type        = string
   default     = "Standard_B2s"
 }
 
-variable "namespace" {
-  description = "Kubernetes namespace the app is deployed into (passed through to Ansible/Helm)."
+variable "admin_username" {
+  description = "Admin (SSH) user created on the VM."
   type        = string
-  default     = "tso"
+  default     = "azureuser"
+}
+
+variable "admin_ssh_public_key" {
+  description = <<-EOT
+    OpenSSH public key authorised on the VM for the admin user (e.g. the contents
+    of ~/.ssh/id_ed25519.pub). The matching PRIVATE key is what Ansible/CD connect
+    with. Pass via TF_VAR_admin_ssh_public_key or a *.auto.tfvars file — never
+    commit a real key here.
+  EOT
+  type        = string
+}
+
+variable "allowed_ssh_cidr" {
+  description = "Source CIDR allowed to reach SSH (port 22). Defaults to * for the demo — tighten to your IP/range for anything real."
+  type        = string
+  default     = "*"
 }
 
 variable "dns_label" {
   description = <<-EOT
-    DNS label applied to the ingress public IP, yielding the tutor-facing host
+    DNS label applied to the VM's public IP, yielding the tutor-facing host
     <dns_label>.<location>.cloudapp.azure.com. Must be globally unique within the
-    region, so include something distinctive. Ansible sets the matching
-    `service.beta.kubernetes.io/azure-dns-label-name` annotation on ingress-nginx.
+    region, so include something distinctive. The compose Traefik config requests
+    a Let's Encrypt cert for this exact host.
   EOT
   type        = string
   default     = "tso-special-ops"

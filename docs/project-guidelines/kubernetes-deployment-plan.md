@@ -185,8 +185,7 @@ infra/k8s/
 │   ├── Chart.yaml                 # name: tso, version, appVersion
 │   ├── values.yaml                # defaults (sane, mirror Compose)
 │   ├── values-rancher.yaml        # course cluster overrides
-│   ├── values-azure.yaml          # AKS overrides (see Azure plan)
-│   └── templates/
+│   └── templates/                 # (Azure uses a VM + Compose, not this chart — see Azure plan)
 │       ├── _helpers.tpl           # naming/label helpers
 │       ├── configmap.yaml         # non-secret env (service URLs, ports)
 │       ├── secret.yaml            # DB pwd, JWT secret, OpenAI key (from values/CI)
@@ -449,8 +448,8 @@ genuinely met — not just claimed.
 5. **Observability** (§7): kube-prometheus-stack, ServiceMonitors, dashboard JSON, alert.
 6. **CD** (§8): wire deploy-on-merge to Rancher.
 7. **Production-readiness pass** (§9): probes, limits, HPA, rollback docs.
-8. **Azure** — see [azure-deployment-plan.md](./azure-deployment-plan.md): same chart,
-   `values-azure.yaml`, AKS + ACR + TLS + CD.
+8. **Azure** — see [azure-deployment-plan.md](./azure-deployment-plan.md): the same
+   docker-compose stack on a single Linux VM (Terraform + Ansible) with Traefik TLS + CD.
 
 Ship 3 early (deploy something real fast — the brief's #1 lesson is *make it
 deployable early and iterate*), then layer the rest. Don't leave deployment for the

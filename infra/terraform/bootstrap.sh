@@ -13,8 +13,8 @@
 #   ./infra/terraform/bootstrap.sh
 #
 # It prints the four backend values; pass them to `terraform init` (or set them
-# as the CD workflow's TFSTATE_* secrets). Re-running is safe: every command is
-# idempotent (`create` is a no-op if the resource already exists).
+# as the CD workflow's TFSTATE_* secrets). Re-running with the same STATE_SA is
+# safe: every `az ... create` is a no-op if the resource already exists.
 
 set -euo pipefail
 
@@ -22,9 +22,16 @@ set -euo pipefail
 LOCATION="${LOCATION:-westeurope}"
 STATE_RG="${STATE_RG:-rg-tfstate}"
 # Storage account names are GLOBAL and must be 3-24 lowercase alphanumerics.
-# Default appends a short random suffix so first run doesn't collide; pin it via
-# env once chosen so re-runs reuse the same account.
-STATE_SA="${STATE_SA:-tsotfstate$RANDOM}"
+# Set STATE_SA explicitly before the first run and reuse it forever (also store
+# it as TFSTATE_STORAGE_ACCOUNT in GitHub Secrets). If unset, we derive a stable
+# name from the active subscription id so re-runs do not fork state via $RANDOM.
+if [[ -z "${STATE_SA:-}" ]]; then
+  sub_id="$(az account show --query id -o tsv)"
+  sub_suffix="$(printf '%s' "$sub_id" | tr -d '-' | cut -c1-8)"
+  STATE_SA="tsotfstate${sub_suffix}"
+  echo ">> STATE_SA not set; using subscription-stable name: $STATE_SA" >&2
+  echo ">> Pin it for clarity: STATE_SA=$STATE_SA $0" >&2
+fi
 STATE_CONTAINER="${STATE_CONTAINER:-tfstate}"
 STATE_KEY="${STATE_KEY:-tso-azure.tfstate}"
 # -----------------------------------------------------------------------------

@@ -1,34 +1,17 @@
-output "resource_group_name" {
-  description = "Resource group holding the cluster — feed to `az aks get-credentials`."
-  value       = azurerm_resource_group.tso.name
-}
-
-output "cluster_name" {
-  description = "AKS cluster name — feed to `az aks get-credentials`."
-  value       = azurerm_kubernetes_cluster.tso.name
-}
-
-output "namespace" {
-  description = "Kubernetes namespace the app deploys into."
-  value       = var.namespace
-}
-
-output "dns_label" {
-  description = "DNS label Ansible sets on the ingress public IP."
-  value       = var.dns_label
+output "public_ip" {
+  description = "Static public IP of the VM — SSH target and the A record behind the FQDN."
+  value       = azurerm_public_ip.tso.ip_address
 }
 
 # Deterministic public host: Azure builds it from the DNS label we attach to the
-# ingress-nginx public IP. Computing it here (rather than reading it back after
-# the controller is up) lets Ansible/Helm set ingress.host in the same run, fully
-# dynamic with no manual copy-paste.
-output "ingress_fqdn" {
+# VM's public IP. Computing it here lets Ansible/CD pass it straight to Traefik as
+# the DOMAIN (for routing + the Let's Encrypt cert) with no manual copy-paste.
+output "fqdn" {
   description = "Tutor-facing HTTPS host: <dns_label>.<location>.cloudapp.azure.com."
   value       = "${var.dns_label}.${var.location}.cloudapp.azure.com"
 }
 
-output "kube_config_raw" {
-  description = "Raw kubeconfig for the cluster (sensitive). CI uses `az aks get-credentials` instead."
-  value       = azurerm_kubernetes_cluster.tso.kube_config_raw
-  sensitive   = true
+output "admin_username" {
+  description = "Admin (SSH) user to connect to the VM as."
+  value       = var.admin_username
 }

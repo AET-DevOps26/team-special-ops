@@ -1,9 +1,9 @@
 name: CD (Azure)
 
-# Provisions AKS with Terraform, then prepares the cluster and deploys the Helm
-# chart with Ansible. Manual by default because AKS bills while it runs — a
-# scheduled/auto deploy would quietly burn credit. Flip `deploy` on push if you
-# want merge-to-main -> live (and accept the running cost).
+# Provisions a Linux VM with Terraform, then configures it and deploys the
+# docker-compose stack with Ansible (over SSH). Manual by default because the VM
+# bills while it runs — a scheduled/auto deploy would quietly burn credit. Flip
+# `deploy` on push if you want merge-to-main -> live (and accept the running cost).
 on:
   workflow_dispatch:
     inputs:
@@ -18,8 +18,12 @@ on:
         description: "Image tag to deploy (e.g. sha-abc1234). Blank = latest."
         type: string
         default: ""
+      confirm:
+        description: "Type DESTROY to confirm teardown (only used when action=destroy)."
+        type: string
+        default: ""
 
-# Never let two infra runs touch the same Terraform state / cluster at once.
+# Never let two infra runs touch the same Terraform state / VM at once.
 concurrency:
   group: cd-azure
   cancel-in-progress: false
@@ -39,18 +43,18 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.action == 'deploy' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       # OIDC: exchanges the GitHub token for Azure access — no client secret stored.
       - name: Azure login (OIDC)
-        uses: azure/login@v2
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         with:
           terraform_version: "1.9.5"
 
@@ -63,75 +67,109 @@ jobs:
             -backend-config="container_name=${{ secrets.TFSTATE_CONTAINER }}" \
             -backend-config="key=${{ secrets.TFSTATE_KEY }}"
 
+      # The VM's authorised SSH key. Provided as TF_VAR_* so Terraform picks it up
+      # without a committed value; the matching private key is used by Ansible below.
       - name: Terraform apply
         working-directory: infra/terraform
+        env:
+          TF_VAR_admin_ssh_public_key: ${{ secrets.AZURE_VM_SSH_PUBLIC_KEY }}
         run: terraform apply -auto-approve -input=false
 
-      # Read the outputs Ansible needs (cluster coordinates + live ingress host).
+      # Read the outputs Ansible needs: the VM address, SSH user, and public host.
       - name: Capture Terraform outputs
         id: tf
         working-directory: infra/terraform
         run: |
-          echo "resource_group=$(terraform output -raw resource_group_name)" >> "$GITHUB_OUTPUT"
-          echo "cluster_name=$(terraform output -raw cluster_name)"         >> "$GITHUB_OUTPUT"
-          echo "namespace=$(terraform output -raw namespace)"               >> "$GITHUB_OUTPUT"
-          echo "dns_label=$(terraform output -raw dns_label)"               >> "$GITHUB_OUTPUT"
-          echo "ingress_fqdn=$(terraform output -raw ingress_fqdn)"         >> "$GITHUB_OUTPUT"
+          echo "public_ip=$(terraform output -raw public_ip)"           >> "$GITHUB_OUTPUT"
+          echo "fqdn=$(terraform output -raw fqdn)"                     >> "$GITHUB_OUTPUT"
+          echo "admin_username=$(terraform output -raw admin_username)" >> "$GITHUB_OUTPUT"
 
-      # Merges AKS creds into the runner's kubeconfig; every kubectl/helm/ansible
-      # task after this targets the new cluster.
-      - name: Get AKS credentials
+      # Write the SSH private key Ansible connects with. Passed via env (not inline)
+      # to avoid script injection; file is 0600 so SSH accepts it.
+      - name: Write SSH private key
+        env:
+          AZURE_VM_SSH_PRIVATE_KEY: ${{ secrets.AZURE_VM_SSH_PRIVATE_KEY }}
         run: |
-          az aks get-credentials \
-            --resource-group "${{ steps.tf.outputs.resource_group }}" \
-            --name "${{ steps.tf.outputs.cluster_name }}" \
-            --overwrite-existing
+          mkdir -p ~/.ssh
+          install -m 600 /dev/null ~/.ssh/tso_azure
+          printf '%s\n' "$AZURE_VM_SSH_PRIVATE_KEY" > ~/.ssh/tso_azure
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.12"
 
       - name: Install Ansible + collections
         run: |
-          pip install "ansible-core>=2.16" kubernetes
+          pip install "ansible-core>=2.16"
           ansible-galaxy collection install -r infra/ansible/requirements.yml
 
-      - name: Ansible deploy (cluster prep + Helm)
+      # Wait until the freshly-booted VM accepts SSH before handing off to Ansible.
+      - name: Wait for SSH
+        env:
+          PUBLIC_IP: ${{ steps.tf.outputs.public_ip }}
+          ADMIN_USER: ${{ steps.tf.outputs.admin_username }}
+        run: |
+          for i in $(seq 1 30); do
+            if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
+                 -i ~/.ssh/tso_azure "${ADMIN_USER}@${PUBLIC_IP}" true 2>/dev/null; then
+              echo "SSH is up."
+              exit 0
+            fi
+            echo "Waiting for SSH ($i/30)..."
+            sleep 10
+          done
+          echo "VM did not accept SSH in time." >&2
+          exit 1
+
+      - name: Ansible deploy (configure VM + docker compose)
         working-directory: infra/ansible
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          LOGOS_API_KEY: ${{ secrets.LOGOS_API_KEY }}
+          PUBLIC_IP: ${{ steps.tf.outputs.public_ip }}
+          ADMIN_USER: ${{ steps.tf.outputs.admin_username }}
+          DOMAIN: ${{ steps.tf.outputs.fqdn }}
+          IMAGE_TAG: ${{ inputs.image_tag != '' && inputs.image_tag || 'latest' }}
         run: |
           ansible-playbook playbook.yml \
-            -e "namespace=${{ steps.tf.outputs.namespace }}" \
-            -e "dns_label=${{ steps.tf.outputs.dns_label }}" \
-            -e "ingress_host=${{ steps.tf.outputs.ingress_fqdn }}" \
-            -e "image_tag=${{ inputs.image_tag != '' && inputs.image_tag || 'latest' }}"
+            --inventory "${PUBLIC_IP}," \
+            --user "${ADMIN_USER}" \
+            --private-key ~/.ssh/tso_azure \
+            -e "domain=${DOMAIN}" \
+            -e "image_tag=${IMAGE_TAG}"
 
       - name: Summary
+        env:
+          FQDN: ${{ steps.tf.outputs.fqdn }}
         run: |
-          echo "Deployed. App will be live at: https://${{ steps.tf.outputs.ingress_fqdn }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "(cert-manager may take a minute to issue the Let's Encrypt cert.)"            >> "$GITHUB_STEP_SUMMARY"
+          echo "Deployed. App will be live at: https://${FQDN}" >> "$GITHUB_STEP_SUMMARY"
+          echo "(Traefik may take a minute to issue the Let's Encrypt cert.)" >> "$GITHUB_STEP_SUMMARY"
 
-  # Manual teardown: `terraform destroy` deletes AKS, disks, and the public IP so
-  # charges stop. Run this from the Actions tab with action=destroy.
+  # Manual teardown: `terraform destroy` deletes the VM, disk, NIC, and public IP
+  # so charges stop. Run from Actions with action=destroy and confirm=DESTROY.
+  #
+  # Double-gated so a casual dispatch cannot wipe the VM:
+  #   1. confirm input must equal DESTROY (typed confirmation), and
+  #   2. azure-destroy environment pauses for a required reviewer
+  #      (Settings -> Environments -> azure-destroy -> Required reviewers).
   destroy:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.action == 'destroy' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.action == 'destroy' && inputs.confirm == 'DESTROY' }}
     runs-on: ubuntu-latest
+    environment: azure-destroy
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Azure login (OIDC)
-        uses: azure/login@v2
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         with:
           terraform_version: "1.9.5"
 
@@ -144,6 +182,10 @@ jobs:
             -backend-config="container_name=${{ secrets.TFSTATE_CONTAINER }}" \
             -backend-config="key=${{ secrets.TFSTATE_KEY }}"
 
+      # admin_ssh_public_key has no default, so destroy must also receive it to
+      # evaluate the config (no resources are created — it's torn down).
       - name: Terraform destroy
         working-directory: infra/terraform
+        env:
+          TF_VAR_admin_ssh_public_key: ${{ secrets.AZURE_VM_SSH_PUBLIC_KEY }}
         run: terraform destroy -auto-approve -input=false
