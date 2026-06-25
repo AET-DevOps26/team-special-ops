@@ -103,13 +103,52 @@ jobs:
         working-directory: web-client
         run: pnpm build
 
+
+  e2e-tests:
+    needs: [java-services, genai, web-client]
+    name: Run E2E Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Use your project's Node version
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8 # Use your project's pnpm version
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Install Playwright Browsers
+        run: pnpm exec playwright install --with-deps
+
+      - name: Build Docker images
+        run: docker compose -f infra/docker-compose.yml build
+
+      - name: Run E2E tests
+        run: pnpm test:e2e
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always() # Ensures the report uploads even if tests fail
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
   # Build all five service images and push them to GitHub Container Registry.
   # Runs only after the test jobs pass (so a red build never publishes) and only
   # on push to main — pull requests still run the tests above but publish nothing.
   # Each image is tagged with both the commit SHA (immutable, what the Helm chart
   # deploys for reproducible/rollback-able releases) and a moving `main`/`latest`.
   publish-images:
-    needs: [java-services, genai, web-client]
+    needs: [java-services, genai, web-client, e2e-tests]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
