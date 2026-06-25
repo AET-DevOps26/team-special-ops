@@ -49,7 +49,7 @@ async function globalSetup() {
             }
           }
         }
-      } catch (e) {
+      } catch (_) {
         // Service not ready yet
       }
 
