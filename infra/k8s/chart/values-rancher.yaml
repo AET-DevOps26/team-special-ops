@@ -36,5 +36,12 @@ resources:
     cpu: 500m
     memory: 768Mi
 
+# The course cluster runs a Prometheus Operator (Rancher Monitoring), so turn on
+# the ServiceMonitor/PrometheusRule/dashboard. If metrics don't appear in Grafana,
+# the cluster's Prometheus likely needs a selector label — add it under extraLabels
+# (e.g. release: rancher-monitoring).
+monitoring:
+  enabled: true
+
 # Secrets are injected at deploy time (--set or an out-of-git values file),
 # never committed here.

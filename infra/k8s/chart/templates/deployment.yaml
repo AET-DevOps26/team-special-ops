@@ -75,10 +75,22 @@ spec:
               value: "30"
             - name: SPRING_FLYWAY_CONNECT_RETRIES_INTERVAL
               value: "5s"
+            # Browser origin allowed to call this service (read by the Spring CORS
+            # config). Derived from the ingress host so nothing env-specific is
+            # hardcoded; scheme follows whether TLS is enabled.
+            - name: APP_CORS_ALLOWED_ORIGINS
+              value: "{{ if $.Values.ingress.tls.enabled }}https{{ else }}http{{ end }}://{{ $.Values.ingress.host }}"
             {{- end }}
             {{- range $k, $v := $svc.extraEnv }}
             - name: {{ $k }}
               value: {{ $v | quote }}
+            {{- end }}
+            {{- range $envName, $secretKey := $svc.extraSecretEnv }}
+            - name: {{ $envName }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Release.Name }}-secrets
+                  key: {{ $secretKey }}
             {{- end }}
           startupProbe:
             httpGet:

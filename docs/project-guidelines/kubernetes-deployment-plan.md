@@ -112,8 +112,8 @@ environment-specific value reads from an env var with a sane local default:
   Compose overrides it via `SPRING_DATASOURCE_URL`, but make the YAML use
   `${SPRING_DATASOURCE_URL:...}` like `catalog` does, so intent is explicit.
 - `JWT_SECRET` must come from a **Secret** in-cluster, never the baked default.
-- The genai service must read its LLM provider + key + model from env
-  (`OPENAI_API_KEY`, `LLM_PROVIDER`, `LLM_MODEL`), and chat must read
+- The genai service must read its LLM key + model from env
+  (`LOGOS_API_KEY`, `LLM_MODEL`, `LLM_BASE_URL`), and chat must read
   `GENAI_BASE_URL` (in-cluster: `http://genai:8084`).
 
 This directly satisfies *"Hardcoded credentials … are not acceptable."*
@@ -235,7 +235,7 @@ ingress:
 secrets:
   jwtSecret: "dev-only-change-me-min-32-characters-long"
   postgresPassword: "tso"
-  openaiApiKey: ""
+  logosApiKey: ""
 
 resources:                # production-readiness: requests + limits on every pod
   default:

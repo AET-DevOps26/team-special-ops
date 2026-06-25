@@ -2,16 +2,15 @@ import type { components } from './types'
 
 type ApiError = components['schemas']['Error']
 
-// Default to same-origin relative paths (''): the SPA is served behind a
-// reverse proxy (nginx in the image, Vite's dev proxy in `pnpm dev`) that
-// routes /user-progress and /catalog to the backend services, so no CORS is
-// involved. Set VITE_*_URL to point at absolute backend URLs instead.
+// Default to same-origin relative paths with /api prefix: the SPA is served behind a
+// reverse proxy (Traefik) that routes /api/<service> to the backend services,
+// so no CORS is involved. Set VITE_*_URL to point at absolute backend URLs instead.
 export function getBaseUrl(): string {
-  return import.meta.env.VITE_USER_PROGRESS_URL ?? ''
+  return import.meta.env.VITE_USER_PROGRESS_URL ?? '/api'
 }
 
 export function getCatalogBaseUrl(): string {
-  return import.meta.env.VITE_CATALOG_URL ?? ''
+  return import.meta.env.VITE_CATALOG_URL ?? '/api'
 }
 
 export class ApiRequestError extends Error {

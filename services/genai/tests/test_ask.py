@@ -6,17 +6,16 @@ from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage
 
 from genai.chain import AllowedSummary, AskInput, ask_question, parse_llm_response
-from genai.config import Settings
+from genai.config import LOGOS_DEFAULT_BASE_URL, LOGOS_DEFAULT_MODEL, Settings
 from genai.main import app
 
 
 @pytest.fixture
 def settings() -> Settings:
     return Settings(
-        openrouter_api_key="test-key",
-        llm_model="nex-agi/nex-n2-pro:free",
-        openrouter_http_referer=None,
-        openrouter_app_name=None,
+        logos_api_key="test-key",
+        llm_model=LOGOS_DEFAULT_MODEL,
+        llm_base_url=LOGOS_DEFAULT_BASE_URL,
         max_context_chars=10_000,
     )
 
@@ -70,7 +69,7 @@ async def test_ask_question_without_summaries_returns_safe_message(settings: Set
 
 
 def test_genai_ask_endpoint_with_mocked_llm(monkeypatch):
-    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setenv("LOGOS_API_KEY", "test-key")
 
     with patch("genai.routes.ask.ask_question", new_callable=AsyncMock) as mock_ask:
         from genai.chain import AskOutput
@@ -104,7 +103,7 @@ def test_genai_ask_endpoint_with_mocked_llm(monkeypatch):
 
 
 def test_genai_ask_returns_500_when_api_key_missing(monkeypatch):
-    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    monkeypatch.delenv("LOGOS_API_KEY", raising=False)
 
     client = TestClient(app)
     response = client.post(

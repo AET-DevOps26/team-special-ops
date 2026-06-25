@@ -68,18 +68,11 @@ def parse_llm_response(content: str) -> AskOutput:
 
 
 def build_llm(settings: Settings) -> ChatOpenAI:
-    default_headers: dict[str, str] = {}
-    if settings.openrouter_http_referer:
-        default_headers["HTTP-Referer"] = settings.openrouter_http_referer
-    if settings.openrouter_app_name:
-        default_headers["X-Title"] = settings.openrouter_app_name
-
     return ChatOpenAI(
         model=settings.llm_model,
-        api_key=settings.openrouter_api_key,
-        base_url="https://openrouter.ai/api/v1",
+        api_key=settings.logos_api_key,
+        base_url=settings.llm_base_url,
         temperature=0.2,
-        default_headers=default_headers or None,
     )
 
 

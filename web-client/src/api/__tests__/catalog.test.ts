@@ -15,7 +15,7 @@ describe('catalog api', () => {
     await listSeries()
 
     const [url, options] = fetchMock.mock.calls[0]
-    expect(url).toBe('/catalog/series')
+    expect(url).toBe('/api/catalog/series')
     const headers = new Headers(options.headers)
     expect(headers.has('Authorization')).toBe(false)
   })
@@ -26,6 +26,6 @@ describe('catalog api', () => {
 
     await listSeriesEpisodes('abc-123')
 
-    expect(fetchMock.mock.calls[0][0]).toBe('/catalog/series/abc-123/episodes')
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/catalog/series/abc-123/episodes')
   })
 })

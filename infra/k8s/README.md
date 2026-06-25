@@ -38,7 +38,7 @@ helm upgrade --install tso ./infra/k8s/chart \
 3. **Ingress controller** present (Rancher ships ingress-nginx). Set the real
    hostname in `chart/values-rancher.yaml`.
 4. **Secrets** in your environment (or a gitignored `infra/k8s/.env`):
-   `JWT_SECRET`, `POSTGRES_PASSWORD`, optionally `OPENAI_API_KEY`.
+   `JWT_SECRET`, `POSTGRES_PASSWORD`, optionally `LOGOS_API_KEY`.
 
 ## The wiped-cluster story
 
