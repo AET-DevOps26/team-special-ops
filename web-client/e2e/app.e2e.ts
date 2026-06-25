@@ -18,7 +18,7 @@ test.describe('End-to-end: Login, Select Series, Mark Episode as Watched', () =>
         if (!allHealthy) {
           await new Promise((resolve) => setTimeout(resolve, 1000))
         }
-      } catch (_) {
+      } catch  {
         await new Promise((resolve) => setTimeout(resolve, 1000))
       }
       retries++
