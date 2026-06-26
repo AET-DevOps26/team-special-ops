@@ -4,7 +4,7 @@ async function globalSetup() {
   console.log('🚀 Starting Docker Compose stack...')
 
   try {
-    execSync('docker compose -f ../infra/docker-compose.yml up -d --build', {
+    execSync('docker compose -f ../infra/docker-compose.yml up -d', {
       cwd: process.cwd(),
       stdio: 'inherit',
     })
@@ -14,8 +14,8 @@ async function globalSetup() {
     let retries = 0
     const requiredEndpoints = [
       'http://localhost:8080',
-      'http://localhost:8082/actuator/health',
-      'http://localhost:8081/actuator/health',
+      'http://localhost:8080/api/catalog/health',
+      'http://localhost:8080/api/user-progress/health',
     ]
 
     console.log('⏳ Waiting for services to be healthy...')
@@ -24,7 +24,7 @@ async function globalSetup() {
       try {
         const results = await Promise.allSettled(
           requiredEndpoints.map((url) =>
-            fetch(url, { timeout: 5000 }).then((r) => {
+            fetch(url, { signal: AbortSignal.timeout(5000) }).then((r) => {
               if (!r.ok) throw new Error(`${url} returned ${r.status}`)
               return true
             }),
@@ -68,5 +68,4 @@ async function globalSetup() {
   }
 }
 
-// 👇 Playwright requires the setup function to be the default export
 export default globalSetup

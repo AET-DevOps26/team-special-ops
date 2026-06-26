@@ -115,18 +115,18 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20' # Use your project's Node version
+          node-version: '20'
 
       - name: Install pnpm
         uses: pnpm/action-setup@v3
         with:
-          version: 8 # Use your project's pnpm version
+          version: 9
 
       - name: Build Docker images
         run: docker compose -f infra/docker-compose.yml build
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
         working-directory: web-client
 
       - name: Install Playwright Browsers
@@ -140,7 +140,7 @@ jobs:
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
-        if: always() # Ensures the report uploads even if tests fail
+        if: always()
         with:
           name: playwright-report
           path: web-client/playwright-report/

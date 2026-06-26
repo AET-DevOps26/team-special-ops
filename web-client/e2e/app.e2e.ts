@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-test.describe('End-to-end: Login, Select Series, Mark Episode as Watched', () => {
+test.describe('End-to-end: Login, Select Series, Set Episode as current', () => {
   test.beforeAll(async () => {
     // Wait for services to be ready by checking health endpoints
     const maxRetries = 30
@@ -61,11 +61,8 @@ test.describe('End-to-end: Login, Select Series, Mark Episode as Watched', () =>
     const seriesCards = page.locator('[data-testid="series-card"]')
     const cardCount = await seriesCards.count()
 
-    if (cardCount === 0) {
-      console.warn('No series found in catalog. Test may be incomplete if no test data exists.')
-      // Still pass - this is a valid scenario in a fresh system
-      return
-    }
+    expect(cardCount).toBeGreaterThan(0)
+
 
     const firstSeriesCard = seriesCards.first()
     const seriesTitle = await firstSeriesCard.locator('[data-testid="series-title"]').textContent()
@@ -84,10 +81,7 @@ test.describe('End-to-end: Login, Select Series, Mark Episode as Watched', () =>
     const episodeRows = page.locator('[data-testid="episode-row"]')
     const episodeCount = await episodeRows.count()
 
-    if (episodeCount === 0) {
-      console.warn('No episodes found in series. Test may be incomplete if no test data exists.')
-      return
-    }
+    expect(episodeCount).toBeGreaterThan(0)
 
     const firstEpisodeRow = episodeRows.first()
     const episodeTitle = await firstEpisodeRow.locator('[data-testid="episode-title"]').textContent()
