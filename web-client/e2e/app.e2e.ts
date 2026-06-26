@@ -1,33 +1,6 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('End-to-end: Login, Select Series, Set Episode as current', () => {
-  test.beforeAll(async () => {
-    // Wait for services to be ready by checking health endpoints
-    const maxRetries = 30
-    let retries = 0
-    let allHealthy = false
-
-    while (retries < maxRetries && !allHealthy) {
-      try {
-        const responses = await Promise.all([
-          fetch('http://localhost:8080/api/catalog/health'),
-          fetch('http://localhost:8080/api/user-progress/health'),
-        ])
-
-        allHealthy = responses.every((r) => r.ok)
-        if (!allHealthy) {
-          await new Promise((resolve) => setTimeout(resolve, 1000))
-        }
-      } catch  {
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-      }
-      retries++
-    }
-
-    if (!allHealthy) {
-      throw new Error('Services failed to become healthy within timeout')
-    }
-  })
 
   test('should complete full user flow: login, browse series, and mark episode as watched', async ({
     page,
