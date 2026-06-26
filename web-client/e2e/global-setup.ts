@@ -4,7 +4,7 @@ async function globalSetup() {
   console.log('🚀 Starting Docker Compose stack...')
 
   try {
-    execSync('docker compose -f ../infra/docker-compose.yml up -d', {
+    execSync('docker compose -f ../infra/docker-compose.yml up -d --build', {
       cwd: process.cwd(),
       stdio: 'inherit',
     })
