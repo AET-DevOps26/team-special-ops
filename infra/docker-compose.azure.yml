@@ -1,0 +1,80 @@
+# Azure production overlay for infra/docker-compose.yml.
+#
+# Layers on top of the base compose file (which the VM also receives):
+#   docker compose -f docker-compose.yml -f docker-compose.azure.yml up -d
+#
+# Differences vs. the local stack:
+#   - Pull prebuilt GHCR images instead of building locally.
+#   - Traefik terminates TLS on :443 with a Let's Encrypt (ACME HTTP-01) cert,
+#     redirects HTTP -> HTTPS, and routes by public Host(${DOMAIN}).
+#   - The insecure Traefik dashboard API is turned off.
+#
+# NOTE on ports: Compose *concatenates* `ports` across files, so the base
+# 8080/8000 mappings remain bound on the host. That is intentional/harmless here
+# because the Azure NSG only opens 22/80/443 — nothing else is reachable.
+
+services:
+  traefik:
+    command:
+      - --api.dashboard=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      # Global HTTP -> HTTPS redirect.
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      # Let's Encrypt ACME HTTP-01 resolver named "le".
+      - --certificatesresolvers.le.acme.httpchallenge=true
+      - --certificatesresolvers.le.acme.httpchallenge.entrypoint=web
+      - --certificatesresolvers.le.acme.email=${LETSENCRYPT_EMAIL:-devops@example.com}
+      - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
+      # Keep Prometheus metrics (scraped by the observability stack).
+      - --metrics.prometheus=true
+      - --metrics.prometheus.addEntryPointsLabels=true
+      - --metrics.prometheus.addServicesLabels=true
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - traefik_letsencrypt:/letsencrypt
+
+  user-progress:
+    image: ${IMAGE_REGISTRY:-ghcr.io/aet-devops26}/tso-user-progress:${IMAGE_TAG:-latest}
+    labels:
+      - traefik.http.routers.user-progress.rule=Host(`${DOMAIN}`) && PathPrefix(`/api/user-progress`)
+      - traefik.http.routers.user-progress.entrypoints=websecure
+      - traefik.http.routers.user-progress.tls.certresolver=le
+
+  catalog:
+    image: ${IMAGE_REGISTRY:-ghcr.io/aet-devops26}/tso-catalog:${IMAGE_TAG:-latest}
+    labels:
+      - traefik.http.routers.catalog.rule=Host(`${DOMAIN}`) && PathPrefix(`/api/catalog`)
+      - traefik.http.routers.catalog.entrypoints=websecure
+      - traefik.http.routers.catalog.tls.certresolver=le
+
+  chat:
+    image: ${IMAGE_REGISTRY:-ghcr.io/aet-devops26}/tso-chat:${IMAGE_TAG:-latest}
+    labels:
+      - traefik.http.routers.chat.rule=Host(`${DOMAIN}`) && PathPrefix(`/api/chat`)
+      - traefik.http.routers.chat.entrypoints=websecure
+      - traefik.http.routers.chat.tls.certresolver=le
+
+  genai:
+    image: ${IMAGE_REGISTRY:-ghcr.io/aet-devops26}/tso-genai:${IMAGE_TAG:-latest}
+    labels:
+      - traefik.http.routers.genai.rule=Host(`${DOMAIN}`) && PathPrefix(`/api/genai`)
+      - traefik.http.routers.genai.entrypoints=websecure
+      - traefik.http.routers.genai.tls.certresolver=le
+
+  web-client:
+    image: ${IMAGE_REGISTRY:-ghcr.io/aet-devops26}/tso-web-client:${IMAGE_TAG:-latest}
+    labels:
+      # Catch-all on the public host; APIs win via their longer /api/* prefix.
+      - traefik.http.routers.web-client.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.web-client.entrypoints=websecure
+      - traefik.http.routers.web-client.priority=1
+      - traefik.http.routers.web-client.tls.certresolver=le
+
+volumes:
+  traefik_letsencrypt:

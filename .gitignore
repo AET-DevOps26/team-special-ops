@@ -39,3 +39,20 @@ infra/.env
 
 # Local k8s deploy secrets (never commit)
 infra/k8s/.env
+
+# Terraform (Azure VM IaC) — state, plugins, local var overrides
+*.tfstate
+*.tfstate.*
+.terraform/
+*.auto.tfvars
+
+# Ansible
+infra/ansible/*.retry
+infra/ansible/inventory.ini
+
+# SSH keys (never commit)
+*.pem
+id_rsa
+id_rsa.*
+tso_azure
+tso_azure.*

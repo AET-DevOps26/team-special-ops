@@ -1,0 +1,32 @@
+---
+# Non-secret configuration for the Azure VM deployment.
+# Secrets (JWT_SECRET, POSTGRES_PASSWORD, LOGOS_API_KEY, GHCR token) are read from
+# the environment in templates/env.j2 — never put them here.
+
+# Where the stack lives on the VM.
+app_dir: /opt/tso
+
+# Public hostname (matches the Terraform dns_label + location). Override per run
+# with -e domain=... or via the inventory.
+domain: tso-special-ops.westeurope.cloudapp.azure.com
+
+# Image tag pulled from GHCR. CD passes the deployed SHA tag (e.g. sha-abc1234).
+image_tag: latest
+
+# GHCR image org (public images — no pull secret needed by default).
+image_registry: ghcr.io/aet-devops26
+
+# Let's Encrypt registration email for ACME (Traefik). Override per environment.
+letsencrypt_email: devops@team-special-ops.example.com
+
+# Database (non-secret parts; password comes from the environment).
+postgres_user: tso
+postgres_db: tso
+
+# GenAI / LLM wiring — kept consistent with infra/docker-compose.yml defaults.
+llm_model: openai/gpt-oss-120b
+llm_base_url: https://logos.aet.cit.tum.de/v1
+
+# Optional private-registry login. Leave empty for public GHCR images; set
+# ghcr_username + export GHCR_TOKEN to enable `docker login`.
+ghcr_username: ""

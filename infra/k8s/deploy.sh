@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 #
-# One-command deploy for the tso stack.
+# One-command Helm deploy for the tso stack to the course Rancher cluster.
 #
 #   ./infra/k8s/deploy.sh rancher        # deploy to the course Rancher cluster
-#   ./infra/k8s/deploy.sh azure          # deploy to AKS (see azure-deployment-plan.md)
+#
+# NOTE: Azure does NOT use this script / Helm. The Azure target is a single VM
+# running Docker Compose, provisioned with Terraform + Ansible. See
+# docs/project-guidelines/azure-deployment-plan.md (and infra/terraform/,
+# infra/ansible/, infra/docker-compose.azure.yml).
 #
 # Idempotent: run it on a fresh/wiped namespace or to redeploy — `helm upgrade
 # --install` converges either way. Image tag defaults to `latest` (the moving tag
@@ -17,8 +21,9 @@
 set -euo pipefail
 
 ENV="${1:-}"
-if [[ "$ENV" != "rancher" && "$ENV" != "azure" ]]; then
-  echo "usage: $0 <rancher|azure>" >&2
+if [[ "$ENV" != "rancher" ]]; then
+  echo "usage: $0 rancher" >&2
+  echo "(Azure uses Terraform + Ansible + Docker Compose, not Helm — see azure-deployment-plan.md)" >&2
   exit 1
 fi
 
