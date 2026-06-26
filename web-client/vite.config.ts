@@ -4,14 +4,23 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [tailwindcss(), react()],
-  // Dev-only: forward API paths to the backend services so the SPA can use
-  // same-origin relative URLs (/catalog, /user-progress) in `pnpm dev` too —
-  // mirroring how nginx proxies them in the built image. Keeps CORS out of dev.
+  // Dev-only: forward /api/* paths to the backend services, stripping the /api
+  // prefix before forwarding — mirroring what the nginx ingress does in k8s and
+  // what Traefik does in docker-compose. Keeps CORS out of dev.
   server: {
     proxy: {
-      '/catalog': 'http://localhost:8082',
-      '/user-progress': 'http://localhost:8081',
-      '/chat': 'http://localhost:8083',
+      '/api/user-progress': {
+        target: 'http://localhost:8081',
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+      '/api/catalog': {
+        target: 'http://localhost:8082',
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+      '/api/chat': {
+        target: 'http://localhost:8083',
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
     },
   },
   test: {

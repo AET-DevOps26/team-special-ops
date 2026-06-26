@@ -1,8 +1,8 @@
 {{/*
-The single public door. Routes the external host to the web-client Service, which
-serves the SPA and reverse-proxies /catalog, /user-progress, /chat to the backend
-services internally — so the browser stays on one origin (no CORS), exactly like
-the docker-compose setup. On Azure this also terminates TLS via cert-manager.
+Routes traffic into the cluster. /api/* paths go directly to the Spring services
+(nginx ingress strips /api and forwards), mirroring how Traefik routes them in
+docker-compose. Everything else hits the web-client for static SPA serving.
+TLS is terminated here via cert-manager on Rancher.
 */}}
 {{- if .Values.ingress.enabled }}
 apiVersion: networking.k8s.io/v1
@@ -11,10 +11,15 @@ metadata:
   name: {{ .Release.Name }}-web
   labels:
     {{- include "tso.labels" . | nindent 4 }}
-  {{- if .Values.ingress.tls.enabled }}
   annotations:
+    # Enable regex path matching so capture groups work in the paths below.
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    # $1 is the capture group from each path — strips /api from API routes,
+    # passes the full path through for the SPA catch-all.
+    nginx.ingress.kubernetes.io/rewrite-target: $1
+    {{- if .Values.ingress.tls.enabled }}
     cert-manager.io/cluster-issuer: {{ .Values.ingress.tls.clusterIssuer | default "letsencrypt-prod" }}
-  {{- end }}
+    {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   {{- if .Values.ingress.tls.enabled }}
@@ -27,8 +32,32 @@ spec:
     - host: {{ .Values.ingress.host | quote }}
       http:
         paths:
-          - path: /
-            pathType: Prefix
+          # API routes: strip /api prefix before forwarding to each Spring service.
+          # e.g. /api/user-progress/auth/login → /user-progress/auth/login on port 8081
+          - path: /api(/user-progress/.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: user-progress
+                port:
+                  number: {{ (index .Values.services "user-progress").port }}
+          - path: /api(/catalog/.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: catalog
+                port:
+                  number: {{ (index .Values.services "catalog").port }}
+          - path: /api(/chat/.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: chat
+                port:
+                  number: {{ (index .Values.services "chat").port }}
+          # SPA catch-all: passes the full path to web-client for static file serving.
+          - path: (/.*)?
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: web-client
