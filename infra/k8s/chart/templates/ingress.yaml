@@ -1,25 +1,23 @@
 {{/*
-Routes traffic into the cluster. /api/* paths go directly to the Spring services
-(nginx ingress strips /api and forwards), mirroring how Traefik routes them in
-docker-compose. Everything else hits the web-client for static SPA serving.
+Routes traffic into the cluster.
+- API ingress: /api/* paths go directly to the Spring services (nginx ingress strips
+  /api and forwards), mirroring how Traefik routes them in docker-compose.
+- SPA ingress: everything else hits the web-client for static SPA serving.
+Two separate Ingress resources are required because rewrite-target applies to all paths
+in a resource — mixing rewritten API paths with a pass-through SPA catch-all in one
+resource is not possible without the catch-all failing admission validation.
 TLS is terminated here via cert-manager on Rancher.
 */}}
 {{- if .Values.ingress.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ .Release.Name }}-web
+  name: {{ .Release.Name }}-api
   labels:
     {{- include "tso.labels" . | nindent 4 }}
   annotations:
-    # Enable regex path matching so capture groups work in the paths below.
     nginx.ingress.kubernetes.io/use-regex: "true"
-    # $1 is the capture group from each path — strips /api from API routes,
-    # passes the full path through for the SPA catch-all.
     nginx.ingress.kubernetes.io/rewrite-target: $1
-    {{- if .Values.ingress.tls.enabled }}
-    cert-manager.io/cluster-issuer: {{ .Values.ingress.tls.clusterIssuer | default "letsencrypt-prod" }}
-    {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   {{- if .Values.ingress.tls.enabled }}
@@ -32,7 +30,7 @@ spec:
     - host: {{ .Values.ingress.host | quote }}
       http:
         paths:
-          # API routes: strip /api prefix before forwarding to each Spring service.
+          # Strip /api prefix before forwarding to each Spring service.
           # e.g. /api/user-progress/auth/login → /user-progress/auth/login on port 8081
           - path: /api(/user-progress/.*)
             pathType: ImplementationSpecific
@@ -55,9 +53,31 @@ spec:
                 name: chat
                 port:
                   number: {{ (index .Values.services "chat").port }}
-          # SPA catch-all: passes the full path to web-client for static file serving.
-          - path: (/.*)
-            pathType: ImplementationSpecific
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-web
+  labels:
+    {{- include "tso.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.ingress.tls.enabled }}
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.tls.clusterIssuer | default "letsencrypt-prod" }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host | quote }}
+      secretName: {{ .Values.ingress.tls.secretName | default (printf "%s-tls" .Release.Name) }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
             backend:
               service:
                 name: web-client
