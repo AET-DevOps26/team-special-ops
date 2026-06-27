@@ -12,10 +12,12 @@ export function SeriesCard({
     series.episodesCount > 0 ? Math.round((progress / series.episodesCount) * 100) : 0
 
   return (
-    <Link to={`/series/${series.id}`} className="group block text-left">
+    <Link to={`/series/${series.id}`} className="group block text-left" data-testid="series-card">
       <div className="aspect-[3/4] overflow-hidden rounded-xl bg-gradient-to-br from-indigo-500 via-purple-600 to-rose-500 shadow-sm" />
       <div className="mt-2">
-        <p className="font-semibold leading-tight group-hover:underline">{series.title}</p>
+        <p className="font-semibold leading-tight group-hover:underline" data-testid="series-title">
+          {series.title}
+        </p>
         <p className="text-xs text-slate-500">
           {series.seasonsCount} seasons · {series.episodesCount} episodes
         </p>

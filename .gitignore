@@ -23,6 +23,12 @@ dist/
 .eslintcache
 coverage/
 
+# Playwright E2E tests
+test-results/
+playwright-report/
+.auth/
+
+
 # IDEs
 .idea/
 .vscode/
