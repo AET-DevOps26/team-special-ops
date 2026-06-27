@@ -56,7 +56,7 @@ spec:
                 port:
                   number: {{ (index .Values.services "chat").port }}
           # SPA catch-all: passes the full path to web-client for static file serving.
-          - path: (/.*)?
+          - path: (/.*)
             pathType: ImplementationSpecific
             backend:
               service:
