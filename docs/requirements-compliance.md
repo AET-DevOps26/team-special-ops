@@ -10,30 +10,25 @@ documentation that is "inconsistent with implementation").
 
 **Status legend:** ✅ Done · 🟡 Partial / skeleton · ⬜ Not started
 
-**Snapshot — last updated 2026-06-05**
+**Snapshot — last updated 2026-06-28**
 
 | Area | Status | One-line summary |
 |---|---|---|
 | Mono-repo & workflow | ✅ | Mono-repo, feature-branch + PR + review, branch protection runbook |
-| Client (React) | ✅ | React + Vite + TS + Tailwind, served behind reverse proxy |
-| Server (3 Spring Boot microservices) | 🟡 | 3 services exist; `chat` is still a health-only skeleton |
-| Database (PostgreSQL) | ✅ | Postgres 16 via Docker, schema for users/progress/series/episodes |
-| GenAI (Python) | ⬜ | FastAPI skeleton only — **no LLM call, no `/ask`, no model support** |
+| Client (React) | ✅ | React + Vite + TS + Tailwind; auth, library, series detail, chat panel |
+| Server (3 Spring Boot microservices) | ✅ | user-progress (auth + progress), catalog (series + episodes), chat (Q&A orchestration) |
+| Database (PostgreSQL) | ✅ | Postgres 16 via Docker, schema for users/progress/series/episodes, Flyway migrations |
+| GenAI (Python) | ✅ | FastAPI + LangChain; `/ask` endpoint with TUM Logos backend; tests |
 | OpenAPI / Swagger | ✅ | Single-source `api/openapi.yaml`, Swagger UI per service |
 | Local run (docker-compose) | ✅ | `docker compose up`, ≤3 commands, sane defaults |
 | CI | ✅ | Build + test + lint per service on every PR |
-| CD to Kubernetes | ⬜ | Not built — owned by separate deployment workstream |
-| Kubernetes (Helm/manifests) | ⬜ | Not built — owned by separate deployment workstream |
-| Observability (Prometheus/Grafana/alerts) | ✅ | Local via docker-compose: Prometheus + Grafana dashboard + 2 alert rules; k8s monitoring still owned by deployment workstream |
-| Testing | 🟡 | Good coverage on built services; chat/genai untested because unbuilt |
-| Engineering artefacts (UML, architecture) | ✅ | 3 UML diagrams + architecture doc |
-| Documentation (README, responsibilities) | 🟡 | README strong; **student-responsibilities doc missing** |
-
-> **Biggest risks right now** (not documentation): the central **GenAI Q&A
-> feature is unimplemented**, and **CD and Kubernetes do not exist**
-> (observability is now in place locally). These map to the heavily-weighted
-> rubric categories *User-Facing Value* and *Build and Deployment*, and to the
-> hard-fail criterion "no working end-to-end system is demonstrated."
+| CD to Kubernetes (Rancher) | ✅ | Auto-deploys on merge to main via `deploy.yml`; Helm chart |
+| Kubernetes (Helm chart) | ✅ | `infra/k8s/chart/` — full Helm chart, TLS via cert-manager |
+| Kubernetes (Azure) | 🟡 | Terraform + Ansible plan exists; AKS provisioning owned by Tejash |
+| Observability (Prometheus/Grafana/alerts) | ✅ | Local + k8s: Prometheus scraping, Grafana dashboard (exported JSON), 2 alert rules |
+| Testing | 🟡 | Good coverage on user-progress, catalog, genai; chat service tests thin |
+| Engineering artefacts (UML, architecture) | ✅ | 3 UML diagrams + architecture doc + OpenAPI |
+| Documentation (README, responsibilities) | ✅ | README + `docs/responsibilities.md` |
 
 ---
 
@@ -43,23 +38,23 @@ documentation that is "inconsistent with implementation").
 |---|---|---|---|
 | GitHub mono-repo | ✅ | repo root: `api/`, `services/`, `web-client/`, `infra/`, `docs/` | — |
 | Client side | ✅ | `web-client/` (React + Vite + TS + Tailwind) | — |
-| Server side (Spring Boot, ≥3 microservices) | 🟡 | `services/user-progress`, `services/catalog`, `services/chat` | `chat` is health-only; build Q&A orchestration |
-| Database (persistent, documented schema) | ✅ | Postgres 16 in `infra/docker-compose.yml`; schema in service migrations + `docs/system-architecture.md` | — |
-| GenAI as separate Python service | ⬜ | `services/genai` (FastAPI, health endpoint only) | Implement `/ask`, prompt, LLM call |
-| CI/CD | 🟡 | `.github/workflows/ci.yml` (CI only) | Add CD workflow |
-| Kubernetes | ⬜ | — | Separate deployment workstream |
-| Monitoring | ✅ | `infra/observability/` — Prometheus + Grafana + 2 alert rules (local via docker-compose) | k8s monitoring owned by deployment workstream |
+| Server side (Spring Boot, ≥3 microservices) | ✅ | `services/user-progress`, `services/catalog`, `services/chat` | — |
+| Database (persistent, documented schema) | ✅ | Postgres 16 in `infra/docker-compose.yml`; schema in Flyway migrations + `docs/system-architecture.md` | — |
+| GenAI as separate Python service | ✅ | `services/genai/` — FastAPI + LangChain; `/ask` with prompt template + LLM call | — |
+| CI/CD | ✅ | `ci.yml` (CI) + `deploy.yml` (CD to Rancher on merge to main) | — |
+| Kubernetes | ✅ | `infra/k8s/chart/` Helm chart; deployed at `team-special-ops.stud.k8s.aet.cit.tum.de` | Azure environment (Tejash) |
+| Monitoring | ✅ | `infra/observability/` — Prometheus + Grafana + 2 alert rules; k8s scraping via actuator endpoints | — |
 
 ## 2. Development workflow
 
 | Requirement | Status | Evidence | What's left |
 |---|---|---|---|
 | GitHub mono-repo | ✅ | repo structure | — |
-| Feature branch per change | ✅ | branch naming e.g. `atharva/update-docs`; git history | — |
-| PRs mandatory before merge to main | ✅ | `docs/branch-protection.md`, merged PRs (#6–#10) | — |
-| Peer code review + approval | ✅ | branch-protection requires 1 approval; PR history | Keep review participation visible (graded) |
+| Feature branch per change | ✅ | branch naming convention; git history | — |
+| PRs mandatory before merge to main | ✅ | `docs/branch-protection.md`, PR history | — |
+| Peer code review + approval | ✅ | branch protection requires 1 approval; PR history | Keep review participation visible |
 | CI on every PR (build + test) | ✅ | `ci.yml` runs on `pull_request` | — |
-| CD: auto-deploy to k8s on merge to main | ⬜ | — | Build CD workflow + k8s target |
+| CD: auto-deploy to k8s on merge to main | ✅ | `deploy.yml` triggers on CI success on main; deploys via Helm to Rancher | — |
 
 ## 3. System architecture
 
@@ -67,20 +62,20 @@ documentation that is "inconsistent with implementation").
 |---|---|---|---|
 | Client communicates with server over REST | ✅ | `web-client/src/api/`, generated TS types from OpenAPI | — |
 | Server exposes REST APIs | ✅ | `api/openapi.yaml` paths for user-progress, catalog, chat | — |
-| Server = Spring Boot | ✅ | `services/*/pom.xml`, Java 21, Spring Boot | — |
-| ≥3 microservices, distinct responsibilities | ✅ (count) / 🟡 (depth) | user-progress (auth+progress), catalog (series+episodes), chat (Q&A) | `chat` responsibility not yet implemented |
-| Database with documented schema | ✅ | `docs/system-architecture.md` §1.1 (Analysis Object Model) | — |
-| GenAI runs as independent service over defined interface | 🟡 | separate service + container; interface in OpenAPI is health-only | Define + implement `/ask` contract |
+| Server = Spring Boot | ✅ | `services/*/pom.xml`, Java 21, Spring Boot 3 | — |
+| ≥3 microservices, distinct responsibilities | ✅ | user-progress (auth+progress), catalog (series+episodes), chat (Q&A orchestration → GenAI) | — |
+| Database with documented schema | ✅ | `docs/system-architecture.md` §1.1 (Analysis Object Model); Flyway migration files | — |
+| GenAI runs as independent service over defined interface | ✅ | separate FastAPI service; `/ask` contract in `api/openapi.yaml`; chat service calls it via HTTP | — |
 
 ## 4. GenAI component
 
 | Requirement | Status | Evidence | What's left |
 |---|---|---|---|
-| Implemented in Python, separate, containerised | ✅ (shell) | `services/genai/` FastAPI + `Dockerfile` | — |
-| Networked with server over defined interface | ⬜ | only `/genai/health` in spec | Add `/ask` to OpenAPI; wire `chat` → `genai` |
-| Real user-facing use case (Q&A) | ⬜ | — | Implement spoiler-safe Q&A end to end |
-| Cloud model support (e.g. OpenAI API) | ⬜ | — | Add provider abstraction + OpenAI backend |
-| Local model support (e.g. GPT4All/LLaMA) | ⬜ | — | Add local backend, env-switchable |
+| Implemented in Python, separate, containerised | ✅ | `services/genai/` FastAPI + `Dockerfile` | — |
+| Networked with server over defined interface | ✅ | `/ask` in `api/openapi.yaml`; `chat` service calls genai via `GenAiClient` | — |
+| Real user-facing use case (Q&A) | ✅ | Spoiler-safe chat: question + allowed episode summaries → LLM answer with citations | — |
+| Cloud model support | ✅ | TUM Logos (`openai/gpt-oss-120b`); configurable via `LLM_BASE_URL` + `LLM_MODEL` env vars | — |
+| Local model support (e.g. GPT4All/LLaMA) | 🟡 | `LLM_BASE_URL` is env-switchable; compatible with any OpenAI-compatible endpoint (e.g. Ollama) | Document Ollama setup in README |
 | **Bonus:** full RAG with vector DB (Weaviate) | ⬜ | explicitly deferred — see `docs/system-architecture.md` "What's deferred" | Post-MVP |
 
 ## 5. Environment & deployment
@@ -90,40 +85,40 @@ documentation that is "inconsistent with implementation").
 | Every component has its own Dockerfile | ✅ | `web-client/Dockerfile`, `services/Dockerfile.spring`, `services/genai/Dockerfile` | — |
 | `docker-compose.yml` runs system end-to-end locally | ✅ | `infra/docker-compose.yml` (postgres + 3 java + genai + web) | — |
 | Runnable in ≤3 commands, sane defaults | ✅ | `docker compose -f infra/docker-compose.yml up --build`; defaults in compose | — |
-| Externalised config (env vars / secrets) | 🟡 | `infra/env.example`, env-driven datasource/JWT | No secrets manager yet (fine until k8s) |
-| Deployable to Kubernetes (Helm or manifests) | ⬜ | — | Deployment workstream |
-| Rancher + Azure environments | ⬜ | — | Deployment workstream |
+| Externalised config (env vars / secrets) | ✅ | `infra/env.example`; env-driven datasource, JWT, LLM keys; k8s uses Helm + K8s Secrets | — |
+| Deployable to Kubernetes (Helm) | ✅ | `infra/k8s/chart/` — deployed on Rancher | — |
+| Rancher environment | ✅ | `https://team-special-ops.stud.k8s.aet.cit.tum.de` | — |
+| Azure environment | 🟡 | Terraform + Ansible automation exists; AKS deployment in progress | Tejash |
 
 ## 6. CI/CD
 
 | Requirement | Status | Evidence | What's left |
 |---|---|---|---|
-| GitHub Actions | ✅ | `.github/workflows/ci.yml` | — |
-| CI builds all services | ✅ | matrix: java-services + genai + web-client | Add `chat` Q&A build once implemented |
-| CI tests all services | 🟡 | java `verify`, `pytest`, `pnpm test` | genai/chat tests thin (services unbuilt) |
-| CI static analysis / linting | ✅ | redocly (spec), ruff (py), eslint (web) | Consider adding Java static analysis |
-| CD auto-deploy to k8s on merge | ⬜ | — | Deployment workstream |
-| Secrets / env-specific config in pipeline | ⬜ | — | Comes with CD |
+| GitHub Actions | ✅ | `.github/workflows/ci.yml`, `.github/workflows/deploy.yml` | — |
+| CI builds all services | ✅ | matrix: java-services (user-progress, catalog, chat) + genai + web-client | — |
+| CI tests all services | 🟡 | java `verify`, `pytest`, `pnpm test` — chat tests thin | Broaden chat test coverage |
+| CI static analysis / linting | ✅ | redocly (spec), ruff (py), eslint (web), spotless (java) | — |
+| CD auto-deploy to k8s on merge | ✅ | `deploy.yml` triggers on `workflow_run` success on main; runs `deploy.sh rancher` | — |
+| Secrets / env-specific config in pipeline | ✅ | `JWT_SECRET`, `POSTGRES_PASSWORD`, `LOGOS_API_KEY`, `KUBECONFIG_B64` via GitHub Secrets | — |
 
 ## 7. Observability
 
 | Requirement | Status | Evidence | What's left |
 |---|---|---|---|
-| Prometheus metrics collection | ✅ | `infra/observability/prometheus/` scrapes Spring `/actuator/prometheus` + genai `/metrics` | k8s scraping owned by deployment workstream |
+| Prometheus metrics collection | ✅ | `infra/observability/prometheus/` scrapes Spring `/actuator/prometheus` + genai `/metrics` | — |
 | Track request count, latency, error rate | ✅ | Micrometer `http_server_requests_*` (Spring) + `http_requests_total` / `http_request_duration_seconds_*` (genai) | — |
 | Grafana dashboards reflecting system state | ✅ | "TSO — System Overview" auto-provisioned from `infra/observability/grafana/` | — |
 | Dashboards exported as `.json` in repo | ✅ | `infra/observability/grafana/dashboards/tso-overview.json` | — |
-| ≥1 meaningful alert rule | ✅ | `infra/observability/prometheus/alerts.yml`: `ServiceDown`, `HighErrorRate` | Alertmanager / notification routing not yet wired |
+| ≥1 meaningful alert rule | ✅ | `infra/observability/prometheus/alerts.yml`: `ServiceDown`, `HighErrorRate` | Alertmanager notification routing not wired |
 
 ## 8. Testing
 
 | Requirement | Status | Evidence | What's left |
 |---|---|---|---|
-| Unit tests for critical server logic | ✅ | `user-progress` (auth, JWT, progress, seed), `catalog`, `chat` (health) | Add tests as `chat` grows |
-| Tests for GenAI logic | ⬜ | only `services/genai/tests/test_health.py` | Add once `/ask` exists |
+| Unit tests for critical server logic | 🟡 | `user-progress` (auth, JWT, progress, seed), `catalog` — chat tests thin | Broaden chat coverage |
+| Tests for GenAI logic | ✅ | `services/genai/tests/test_ask.py`, `test_prompts.py`, `test_metrics.py` | — |
 | Client tests on core workflows | ✅ | `web-client/src/**/__tests__/*` (pages, components, api) | — |
 | All tests run automatically in CI | ✅ | `ci.yml` per-service test steps | — |
-| Edge-case / failure coverage | 🟡 | mostly happy-path + integration | Spoiler-trap suite is the key correctness artifact (see architecture doc) |
 
 ## 9. Engineering artefacts & documentation
 
@@ -133,10 +128,10 @@ documentation that is "inconsistent with implementation").
 | Subsystem decomposition + interfaces | ✅ | `docs/system-architecture.md` §1.3 + component table | — |
 | UML: Analysis Object Model | ✅ | `docs/diagrams/Class Diagram.png` | — |
 | UML: Use Case Diagram | ✅ | `docs/diagrams/Use Case Diagram.png` | — |
-| UML: Subsystem Decomposition / top-level architecture | ✅ | `docs/diagrams/Component Diagram.png` | — |
-| OpenAPI/Swagger documentation | ✅ | `api/openapi.yaml`; Swagger UI per service (README) | Extend spec as Q&A lands |
-| README: setup, architecture, API, CI/CD, monitoring, responsibilities | 🟡 | `README.md` (setup/arch/API/workflow + monitoring); `docs/observability.md` | Add responsibilities |
-| Student responsibilities documented & traceable | ⬜ | — | **Add `docs/responsibilities.md` (RACI)** — fail criterion |
+| UML: Subsystem Decomposition | ✅ | `docs/diagrams/Component Diagram.png` | — |
+| OpenAPI/Swagger documentation | ✅ | `api/openapi.yaml`; Swagger UI per service (see README) | — |
+| README: setup, architecture, API, CI/CD, monitoring, responsibilities | ✅ | `README.md`; `docs/observability.md`; `docs/responsibilities.md` | — |
+| Student responsibilities documented & traceable | ✅ | `docs/responsibilities.md` — RACI table + contribution summary per student | — |
 | Problem statement | ✅ | `docs/problem-statement.md` | — |
 
 ## 10. Deliverables checklist
@@ -144,47 +139,35 @@ documentation that is "inconsistent with implementation").
 | Deliverable | Status | Location |
 |---|---|---|
 | Source: client | ✅ | `web-client/` |
-| Source: server (3 services) | 🟡 | `services/` (chat skeleton) |
-| Source: GenAI | ⬜ | `services/genai/` (skeleton) |
-| Dockerfiles + docker-compose | ✅ | `web-client/`, `services/`, `infra/docker-compose.yml` |
-| Kubernetes (Helm/YAML) + instructions | ⬜ | deployment workstream |
+| Source: server (3 services) | ✅ | `services/user-progress/`, `services/catalog/`, `services/chat/` |
+| Source: GenAI | ✅ | `services/genai/` |
+| Dockerfiles + docker-compose | ✅ | `web-client/Dockerfile`, `services/Dockerfile.spring`, `services/genai/Dockerfile`, `infra/docker-compose.yml` |
+| Kubernetes Helm chart + instructions | ✅ | `infra/k8s/chart/`; `docs/project-guidelines/kubernetes-deployment-plan.md` |
 | Monitoring config + exported dashboards + alert rules | ✅ | `infra/observability/` (Prometheus config, `tso-overview.json`, `alerts.yml`) |
-| Testing suite + run instructions | 🟡 | tests present; run instructions to add |
-| Documentation (README + responsibilities) | 🟡 | `README.md`; responsibilities missing |
+| Testing suite + run instructions | 🟡 | tests present in each service; run instructions in README |
+| Documentation (README + responsibilities) | ✅ | `README.md`; `docs/responsibilities.md` |
 
 ## 11. Hard-fail criteria — must all be avoided
 
 | Fail condition | Current standing | Note |
 |---|---|---|
-| Contributions not transparently documented (Artemis + GitHub) | ⚠️ at risk | GitHub history good; **add responsibilities doc** + keep Artemis activity visible |
-| A member cannot explain their own subsystem | n/a (process) | Maintain clear ownership; oral exam prep |
-| No working end-to-end system demonstrated | ⚠️ at risk | **Core Q&A path not yet wired end to end** — top priority |
+| Contributions not transparently documented (Artemis + GitHub) | ✅ clear | `docs/responsibilities.md` + visible GitHub PR/commit history |
+| A member cannot explain their own subsystem | n/a (process) | Clear ownership in responsibilities doc; maintain oral exam prep |
+| No working end-to-end system demonstrated | ✅ working | Full flow live at `team-special-ops.stud.k8s.aet.cit.tum.de`; login → series → chat works |
 
 ## 12. Bonus opportunities (rubric)
 
 | Bonus | Status | Note |
 |---|---|---|
-| Advanced DevOps (autoscaling, self-healing, deploy strategies) | ⬜ | After baseline CD/k8s |
-| Advanced observability (tracing, log aggregation, custom metrics) | ⬜ | After baseline metrics |
+| Advanced DevOps (autoscaling, self-healing, deploy strategies) | ⬜ | After Azure baseline |
+| Advanced observability (tracing, log aggregation, custom metrics) | ⬜ | After alertmanager wiring |
 | Advanced AI (RAG, vector DB) | ⬜ | Deferred north-star (Weaviate) |
 
 ---
 
-## Immediate focus (agreed)
+## Remaining focus
 
-Per current team decision, the active workstream — **excluding k8s/deployment,
-which a separate effort owns** — is:
-
-1. **Testing infrastructure** — broaden beyond happy-path; stand up the
-   spoiler-trap correctness suite; ensure CI gates on it.
-2. **CI/CD** — strengthen CI (coverage, Java static analysis) and lay the CD
-   groundwork that the deployment workstream will target.
-
-**✅ DONE (local):** Observability — Prometheus metrics (request count, latency,
-error rate) on the Spring services and GenAI, a Grafana dashboard exported as
-`.json`, and two alert rules. Delivered locally via docker-compose; see
-`infra/observability/` and `docs/observability.md`. Wiring the same metrics
-endpoints into the k8s monitoring stack remains with the deployment workstream.
-
-The GenAI Q&A feature and Kubernetes deployment are tracked here but owned
-elsewhere; this matrix should be updated as each item lands.
+1. **Chat service tests** — broaden beyond health-only; cover the Q&A orchestration path.
+2. **Azure deployment** — AKS provisioning (Tejash); reuses same Helm chart with `values-azure.yaml`.
+3. **Local model documentation** — document Ollama as a drop-in `LLM_BASE_URL` backend for local inference.
+4. **Alertmanager routing** — wire notification channel (Slack/email) for the existing alert rules.
