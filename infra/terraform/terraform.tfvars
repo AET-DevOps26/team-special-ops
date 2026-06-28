@@ -9,7 +9,7 @@
 # AMD, ~€0.09/hr) is the cheapest combo confirmed available + unrestricted here.
 location            = "swedencentral"
 resource_group_name = "rg-tso"
-vm_size             = "Standard_D2as_v5"
+vm_size             = "Standard_D2s_v3"
 admin_username      = "azureuser"
 dns_label           = "tso-special-ops"
 
