@@ -50,6 +50,28 @@ Optional — the Postgres credentials and JWT settings have dev-only defaults
 4. Use the **Ask a question** sidebar on the right — answers cite only episodes
    up to your progress.
 
+### Using a local model (Ollama)
+
+The GenAI service talks to any OpenAI-compatible endpoint, so you can swap
+TUM Logos for a local model with no code changes — just env vars.
+
+1. Install [Ollama](https://ollama.com) and pull a model:
+   ```bash
+   ollama pull llama3.2
+   ```
+2. In `infra/.env`, set:
+   ```
+   LLM_BASE_URL=http://host.docker.internal:11434/v1
+   LLM_MODEL=llama3.2
+   LOGOS_API_KEY=ollama
+   ```
+   (`host.docker.internal` reaches the host machine from inside Docker; on Linux
+   use the host's Docker bridge IP, e.g. `172.17.0.1`.)
+3. Start the stack as normal — no Logos API key required.
+
+Any model available in Ollama works (`mistral`, `phi3`, etc.). Response quality
+and JSON-format compliance vary by model; `llama3.2` and `mistral` are reliable.
+
 Quick API check (replace `$TOKEN` and `$SERIES_ID`):
 
 ```bash
