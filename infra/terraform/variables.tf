@@ -11,9 +11,9 @@ variable "resource_group_name" {
 }
 
 variable "vm_size" {
-  description = "VM size. Standard_D2as_v5 (2 vCPU / 8 GiB) — cheapest size available + unrestricted on this Azure-for-Students subscription in the permitted regions."
+  description = "VM size. Standard_D2s_v3"
   type        = string
-  default     = "Standard_D2as_v5"
+  default     = "Standard_D2s_v3"
 }
 
 variable "admin_username" {
