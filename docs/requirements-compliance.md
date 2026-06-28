@@ -22,8 +22,8 @@ documentation that is "inconsistent with implementation").
 | OpenAPI / Swagger | ✅ | Single-source `api/openapi.yaml`, Swagger UI per service |
 | Local run (docker-compose) | ✅ | `docker compose up`, ≤3 commands, sane defaults |
 | CI | ✅ | Build + test + lint per service on every PR |
-| CD to Kubernetes | ⬜ | Not built — owned by separate deployment workstream |
-| Kubernetes (Helm/manifests) | ⬜ | Not built — owned by separate deployment workstream |
+| CD (cloud) | 🟡 | Two paths in repo: Rancher (Helm, auto-on-merge) + **Azure VM** (Terraform+Ansible+Compose, manual `workflow_dispatch`); not yet run live |
+| Kubernetes (Helm/manifests) | 🟡 | Helm chart in `infra/k8s/` targets Rancher; Azure uses a Terraform-provisioned VM + Docker Compose (documented trade-off) |
 | Observability (Prometheus/Grafana/alerts) | ✅ | Local via docker-compose: Prometheus + Grafana dashboard + 2 alert rules; k8s monitoring still owned by deployment workstream |
 | Testing | 🟡 | Good coverage on built services; chat/genai untested because unbuilt |
 | Engineering artefacts (UML, architecture) | ✅ | 3 UML diagrams + architecture doc |
@@ -46,8 +46,8 @@ documentation that is "inconsistent with implementation").
 | Server side (Spring Boot, ≥3 microservices) | 🟡 | `services/user-progress`, `services/catalog`, `services/chat` | `chat` is health-only; build Q&A orchestration |
 | Database (persistent, documented schema) | ✅ | Postgres 16 in `infra/docker-compose.yml`; schema in service migrations + `docs/system-architecture.md` | — |
 | GenAI as separate Python service | ⬜ | `services/genai` (FastAPI, health endpoint only) | Implement `/ask`, prompt, LLM call |
-| CI/CD | 🟡 | `.github/workflows/ci.yml` (CI only) | Add CD workflow |
-| Kubernetes | ⬜ | — | Separate deployment workstream |
+| CI/CD | ✅ | `.github/workflows/ci.yml` + `deploy.yml` (Rancher CD) + `cd-azure.yml` (Azure VM CD) | Run cloud deploys live |
+| Kubernetes | 🟡 | `infra/k8s/` Helm chart (Rancher); Azure is a Terraform VM + Compose (documented trade-off) | Execute Rancher deploy |
 | Monitoring | ✅ | `infra/observability/` — Prometheus + Grafana + 2 alert rules (local via docker-compose) | k8s monitoring owned by deployment workstream |
 
 ## 2. Development workflow
@@ -59,7 +59,7 @@ documentation that is "inconsistent with implementation").
 | PRs mandatory before merge to main | ✅ | `docs/branch-protection.md`, merged PRs (#6–#10) | — |
 | Peer code review + approval | ✅ | branch-protection requires 1 approval; PR history | Keep review participation visible (graded) |
 | CI on every PR (build + test) | ✅ | `ci.yml` runs on `pull_request` | — |
-| CD: auto-deploy to k8s on merge to main | ⬜ | — | Build CD workflow + k8s target |
+| CD: auto-deploy to k8s on merge to main | 🟡 | `deploy.yml` auto-deploys to Rancher on green CI; Azure VM CD is manual (`cd-azure.yml`, billed-while-running) | Run live |
 
 ## 3. System architecture
 
@@ -91,8 +91,8 @@ documentation that is "inconsistent with implementation").
 | `docker-compose.yml` runs system end-to-end locally | ✅ | `infra/docker-compose.yml` (postgres + 3 java + genai + web) | — |
 | Runnable in ≤3 commands, sane defaults | ✅ | `docker compose -f infra/docker-compose.yml up --build`; defaults in compose | — |
 | Externalised config (env vars / secrets) | 🟡 | `infra/env.example`, env-driven datasource/JWT | No secrets manager yet (fine until k8s) |
-| Deployable to Kubernetes (Helm or manifests) | ⬜ | — | Deployment workstream |
-| Rancher + Azure environments | ⬜ | — | Deployment workstream |
+| Deployable to Kubernetes (Helm or manifests) | ✅ | `infra/k8s/` Helm chart (`deploy.sh rancher`) | — |
+| Rancher + Azure environments | 🟡 | Rancher via Helm; Azure via Terraform VM + Ansible + `docker-compose.azure.yml` (TLS overlay) | Execute both live |
 
 ## 6. CI/CD
 
@@ -102,8 +102,8 @@ documentation that is "inconsistent with implementation").
 | CI builds all services | ✅ | matrix: java-services + genai + web-client | Add `chat` Q&A build once implemented |
 | CI tests all services | 🟡 | java `verify`, `pytest`, `pnpm test` | genai/chat tests thin (services unbuilt) |
 | CI static analysis / linting | ✅ | redocly (spec), ruff (py), eslint (web) | Consider adding Java static analysis |
-| CD auto-deploy to k8s on merge | ⬜ | — | Deployment workstream |
-| Secrets / env-specific config in pipeline | ⬜ | — | Comes with CD |
+| CD auto-deploy to k8s on merge | 🟡 | `deploy.yml` (Rancher, auto-on-merge); `cd-azure.yml` (Azure VM, manual) | Run live |
+| Secrets / env-specific config in pipeline | ✅ | GitHub Secrets + Azure OIDC (no stored client secret); rendered into k8s Secrets / VM `.env` | — |
 
 ## 7. Observability
 
@@ -147,7 +147,7 @@ documentation that is "inconsistent with implementation").
 | Source: server (3 services) | 🟡 | `services/` (chat skeleton) |
 | Source: GenAI | ⬜ | `services/genai/` (skeleton) |
 | Dockerfiles + docker-compose | ✅ | `web-client/`, `services/`, `infra/docker-compose.yml` |
-| Kubernetes (Helm/YAML) + instructions | ⬜ | deployment workstream |
+| Kubernetes (Helm/YAML) + instructions | ✅ | `infra/k8s/` (Helm chart + README, Rancher); Azure VM IaC in `infra/terraform/` + `infra/ansible/` |
 | Monitoring config + exported dashboards + alert rules | ✅ | `infra/observability/` (Prometheus config, `tso-overview.json`, `alerts.yml`) |
 | Testing suite + run instructions | 🟡 | tests present; run instructions to add |
 | Documentation (README + responsibilities) | 🟡 | `README.md`; responsibilities missing |

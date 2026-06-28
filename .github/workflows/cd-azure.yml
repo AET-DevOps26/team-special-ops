@@ -1,0 +1,210 @@
+name: Deploy to Azure VM
+
+# Manual (workflow_dispatch) deploy/destroy of the Azure VM + Docker Compose
+# stack. Manual on purpose: the VM bills while it runs, so we spin it up for a
+# demo and tear it down after. Auto-CD-on-merge stays on the Rancher path
+# (.github/workflows/deploy.yml).
+#
+# ── ONE-TIME PREREQUISITES ─────────────────────────────────────────────────────
+# OIDC federated Azure AD app (no stored client secret), plus repo secrets:
+#   AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID   (OIDC login)
+#   AZURE_VM_SSH_PUBLIC_KEY, AZURE_VM_SSH_PRIVATE_KEY         (VM SSH key pair)
+#   JWT_SECRET, POSTGRES_PASSWORD, LOGOS_API_KEY              (app secrets)
+#   TFSTATE_RESOURCE_GROUP, TFSTATE_STORAGE_ACCOUNT,
+#   TFSTATE_CONTAINER, TFSTATE_KEY                            (remote state coords)
+# Create the tfstate backend once with infra/terraform/bootstrap.sh.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: deploy or destroy
+        type: choice
+        options: [deploy, destroy]
+        default: deploy
+        required: true
+      image_tag:
+        description: GHCR image tag to deploy (e.g. latest or sha-abc1234)
+        default: latest
+        required: true
+      confirm:
+        description: Type DESTROY to confirm teardown (destroy only)
+        default: ""
+        required: false
+
+concurrency:
+  group: azure-vm-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  TF_WORKING_DIR: infra/terraform
+  DNS_LABEL: tso-special-ops
+  LOCATION: westeurope
+
+jobs:
+  deploy:
+    if: inputs.action == 'deploy'
+    runs-on: ubuntu-latest
+    environment: azure
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Azure login (OIDC)
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ secrets.TFSTATE_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ secrets.TFSTATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ secrets.TFSTATE_CONTAINER }}" \
+            -backend-config="key=${{ secrets.TFSTATE_KEY }}"
+        env:
+          ARM_USE_OIDC: "true"
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform apply
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform apply -auto-approve
+        env:
+          ARM_USE_OIDC: "true"
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          TF_VAR_admin_ssh_public_key: ${{ secrets.AZURE_VM_SSH_PUBLIC_KEY }}
+
+      - name: Capture Terraform outputs
+        id: tf
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          echo "public_ip=$(terraform output -raw public_ip)" >> "$GITHUB_OUTPUT"
+          echo "fqdn=$(terraform output -raw fqdn)" >> "$GITHUB_OUTPUT"
+
+      - name: Write SSH private key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AZURE_VM_SSH_PRIVATE_KEY }}" > ~/.ssh/tso_azure
+          chmod 600 ~/.ssh/tso_azure
+
+      - name: Wait for SSH
+        run: |
+          for i in $(seq 1 30); do
+            if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
+                -i ~/.ssh/tso_azure \
+                azureuser@${{ steps.tf.outputs.public_ip }} 'echo ready'; then
+              exit 0
+            fi
+            echo "SSH not ready yet (attempt $i)…"; sleep 10
+          done
+          echo "Timed out waiting for SSH"; exit 1
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: Install Ansible
+        run: |
+          pip install ansible
+          ansible-galaxy collection install -r infra/ansible/requirements.yml
+
+      - name: Run Ansible playbook
+        working-directory: infra/ansible
+        run: |
+          ansible-playbook -i '${{ steps.tf.outputs.public_ip }},' playbook.yml \
+            -u azureuser \
+            --private-key ~/.ssh/tso_azure \
+            -e domain=${{ steps.tf.outputs.fqdn }} \
+            -e image_tag=${{ inputs.image_tag }}
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          LOGOS_API_KEY: ${{ secrets.LOGOS_API_KEY }}
+
+      - name: HTTPS smoke test
+        run: |
+          url="https://${{ steps.tf.outputs.fqdn }}"
+          echo "Smoke-testing $url …"
+          for i in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$url" || true)
+            echo "attempt $i -> HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "Site is up."; exit 0
+            fi
+            sleep 15
+          done
+          echo "Smoke test failed (TLS cert may still be issuing)."; exit 1
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Azure VM deploy (\`${{ inputs.image_tag }}\`)"
+            echo "URL: https://${{ steps.tf.outputs.fqdn }}"
+            echo "Public IP: ${{ steps.tf.outputs.public_ip }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  destroy:
+    if: inputs.action == 'destroy'
+    runs-on: ubuntu-latest
+    # Required-reviewer environment gates teardown behind a manual approval.
+    environment: azure-destroy
+    steps:
+      - name: Validate confirmation
+        run: |
+          if [ "${{ inputs.confirm }}" != "DESTROY" ]; then
+            echo "Refusing to destroy: type DESTROY in the confirm input."; exit 1
+          fi
+
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Azure login (OIDC)
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ secrets.TFSTATE_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ secrets.TFSTATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ secrets.TFSTATE_CONTAINER }}" \
+            -backend-config="key=${{ secrets.TFSTATE_KEY }}"
+        env:
+          ARM_USE_OIDC: "true"
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform destroy
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform destroy -auto-approve
+        env:
+          ARM_USE_OIDC: "true"
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          TF_VAR_admin_ssh_public_key: ${{ secrets.AZURE_VM_SSH_PUBLIC_KEY }}
