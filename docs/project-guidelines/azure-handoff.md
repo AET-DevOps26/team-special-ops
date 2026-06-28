@@ -189,28 +189,27 @@ Go to:
 
 **Certificates & secrets → Federated credentials → Add credential**
 
-Create two credentials.
+Create one credential.
 
-Entity type must be **Environment**, not Branch.
+Entity type must be **Branch**, not Environment (we don't use GitHub
+Environments — see step 5 for why).
 
 
-| Name                       | GitHub org | GitHub repo        | Environment name |
-| -------------------------- | ---------- | ------------------ | ---------------- |
-| `github-env-azure`         | `<ORG>`    | `team-special-ops` | `azure`          |
-| `github-env-azure-destroy` | `<ORG>`    | `team-special-ops` | `azure-destroy`  |
+| Name                 | GitHub org | GitHub repo        | Branch |
+| -------------------- | ---------- | ------------------ | ------ |
+| `github-main-branch` | `<ORG>`    | `team-special-ops` | `main` |
 
 
 The resulting subject must look like this:
 
 ```text
-repo:<ORG>/team-special-ops:environment:azure
-repo:<ORG>/team-special-ops:environment:azure-destroy
+repo:<ORG>/team-special-ops:ref:refs/heads/main
 ```
 
 Example:
 
 ```text
-repo:aet-devops26/team-special-ops:environment:azure
+repo:AET-DevOps26/team-special-ops:ref:refs/heads/main
 ```
 
 ---
@@ -251,16 +250,9 @@ APP_ID="$(az ad app create --display-name "$APP_NAME" --query appId -o tsv)"
 echo "AZURE_CLIENT_ID = $APP_ID"
 
 az ad app federated-credential create --id "$APP_ID" --parameters '{
-  "name": "github-env-azure",
+  "name": "github-main-branch",
   "issuer": "https://token.actions.githubusercontent.com",
-  "subject": "repo:YOUR_ORG/YOUR_REPO:environment:azure",
-  "audiences": ["api://AzureADTokenExchange"]
-}'
-
-az ad app federated-credential create --id "$APP_ID" --parameters '{
-  "name": "github-env-azure-destroy",
-  "issuer": "https://token.actions.githubusercontent.com",
-  "subject": "repo:YOUR_ORG/YOUR_REPO:environment:azure-destroy",
+  "subject": "repo:YOUR_ORG/YOUR_REPO:ref:refs/heads/main",
   "audiences": ["api://AzureADTokenExchange"]
 }'
 
@@ -276,19 +268,16 @@ No client secret is created or needed.
 
 
 
-## 5. GitHub Environments
+## 5. GitHub Environments — NOT USED
 
-Go to:
-
-**GitHub → Settings → Environments**
-
-Create two environments with these exact names because the OIDC federated credentials reference them.
-
-
-| Environment     | Purpose  | Recommended setting                   |
-| --------------- | -------- | ------------------------------------- |
-| `azure`         | Deploy   | No approval required for faster demos |
-| `azure-destroy` | Teardown | Required reviewers enabled            |
+> **Changed:** the workflow no longer uses GitHub Environments. Creating them
+> needs repo **admin**, which the team account only has `maintain` on. So
+> `cd-azure.yml` was changed to drop the `environment:` keys, and the OIDC
+> federated credential trusts the **`main` branch** instead of an environment
+> (subject `repo:<ORG>/team-special-ops:ref:refs/heads/main`). Teardown stays
+> guarded by the required `confirm: DESTROY` text input on the destroy job.
+>
+> Skip this step. No environments to create.
 
 
 ---
@@ -447,7 +436,7 @@ Open the URL from the job summary.
 Do not use bare HTTP on the IP.
 
 ```text
-https://tso-special-ops.westeurope.cloudapp.azure.com
+https://tso-special-ops.swedencentral.cloudapp.azure.com
 ```
 
 Expected result:
@@ -562,7 +551,7 @@ Hand back to the team when all boxes are checked:
 
 | Problem                            | Likely fix                                                                        |
 | ---------------------------------- | --------------------------------------------------------------------------------- |
-| OIDC / `AADSTS700213` login failed | Federated credential subject must match `repo:ORG/REPO:environment:azure` exactly |
+| OIDC / `AADSTS700213` login failed | Federated credential subject must match `repo:ORG/REPO:ref:refs/heads/main` exactly |
 | Terraform permission denied        | App is missing Contributor role, or wrong subscription is selected                |
 | SSH timeout                        | VM may still be booting. Retry. Check SSH key secrets are complete                |
 | Docker image pull failed           | GHCR packages are not public                                                      |
