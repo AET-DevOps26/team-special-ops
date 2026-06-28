@@ -43,7 +43,7 @@ permissions:
 env:
   TF_WORKING_DIR: infra/terraform
   DNS_LABEL: tso-special-ops
-  LOCATION: westeurope
+  LOCATION: swedencentral
 
 jobs:
   deploy:
