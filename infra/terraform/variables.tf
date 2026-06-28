@@ -1,7 +1,7 @@
 variable "location" {
   description = "Azure region for all resources."
   type        = string
-  default     = "westeurope"
+  default     = "swedencentral"
 }
 
 variable "resource_group_name" {
@@ -11,9 +11,9 @@ variable "resource_group_name" {
 }
 
 variable "vm_size" {
-  description = "VM size. Standard_B2s (2 vCPU / 4 GiB) is a cheap burstable baseline for a course demo."
+  description = "VM size. Standard_D2as_v5 (2 vCPU / 8 GiB) — cheapest size available + unrestricted on this Azure-for-Students subscription in the permitted regions."
   type        = string
-  default     = "Standard_B2s"
+  default     = "Standard_D2as_v5"
 }
 
 variable "admin_username" {

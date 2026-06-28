@@ -12,10 +12,10 @@ management (Docker install + bringing the stack up) is handled separately by
 |---|---|
 | `azurerm_resource_group` (`rg-tso`) | One container for everything → teardown is one command |
 | `azurerm_virtual_network` + `azurerm_subnet` | `10.0.0.0/16` network, `10.0.1.0/24` subnet |
-| `azurerm_public_ip` (static, DNS label) | Stable `tso-special-ops.westeurope.cloudapp.azure.com` |
+| `azurerm_public_ip` (static, DNS label) | Stable `tso-special-ops.swedencentral.cloudapp.azure.com` |
 | `azurerm_network_security_group` | Allows 22 (locked down), 80, 443; 9090/3001 stay closed |
 | `azurerm_network_interface` (+ NSG assoc.) | VM networking |
-| `azurerm_linux_virtual_machine` (`vm-tso`) | Ubuntu 22.04 gen2, `Standard_B2s`, 64 GB disk, SSH-key auth |
+| `azurerm_linux_virtual_machine` (`vm-tso`) | Ubuntu 22.04 gen2, `Standard_D2as_v5`, 64 GB disk, SSH-key auth |
 
 ## State
 
@@ -78,8 +78,8 @@ the next `apply` still has its state; delete it manually if you want zero cost.
 
 | Variable | Default | Notes |
 |---|---|---|
-| `location` | `westeurope` | Region for all resources |
-| `vm_size` | `Standard_B2s` | Cheap burstable; bump for more headroom |
+| `location` | `swedencentral` | Region for all resources (Azure-for-Students policy allows only 5 regions; B-series is blocked in all of them) |
+| `vm_size` | `Standard_D2as_v5` | 2 vCPU / 8 GiB AMD; cheapest size available + unrestricted on the student subscription |
 | `admin_username` | `azureuser` | SSH user |
 | `allowed_ssh_cidr` | `*` | **Tighten to your IP** to restrict SSH |
 | `dns_label` | `tso-special-ops` | Public FQDN prefix |
