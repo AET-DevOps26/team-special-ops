@@ -64,6 +64,16 @@ async function globalSetup() {
     throw new Error('Services failed to become healthy within timeout')
   } catch (error) {
     console.error('❌ Global setup failed:', error)
+    // Dump container logs so an opaque startup failure (e.g. a service exiting
+    // during `up`) is diagnosable from the CI log instead of just "exit 1".
+    try {
+      execSync('docker compose -f ../infra/docker-compose.yml logs --no-color --tail=80', {
+        cwd: process.cwd(),
+        stdio: 'inherit',
+      })
+    } catch {
+      // best-effort; surface the original error regardless
+    }
     throw error
   }
 }
