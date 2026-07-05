@@ -16,8 +16,13 @@ project: mono-repo, OpenAPI-first, CI/CD, observability, Kubernetes deployment.
 | `services/genai/` | FastAPI + LangChain — LLM calls |
 | `web-client/` | React + Vite + TS + Tailwind |
 | `infra/docker-compose.yml` | Local stack: Postgres + all services + web client |
-| `docs/` | Architecture, diagrams, runbooks |
-| `.github/workflows/ci.yml` | Build + test + lint per service |
+| `infra/k8s/` | Helm chart for Rancher/Kubernetes deployment |
+| `infra/terraform/`, `infra/ansible/` | Azure VM provisioning and configuration |
+| `infra/observability/` | Prometheus, Grafana dashboards, alert rules |
+| `docs/` | Architecture, diagrams, runbooks, responsibilities |
+| `.github/workflows/ci.yml` | Build + test + lint + e2e + publish images to GHCR |
+| `.github/workflows/deploy.yml` | Auto-deploy to Rancher on green CI (`main`) |
+| `.github/workflows/cd-azure.yml` | Manual deploy/destroy to Azure VM |
 
 ## Run the full stack
 
@@ -144,3 +149,31 @@ See [docs/system-architecture.md](./docs/system-architecture.md) and
 - `main` is branch-protected (see [docs/branch-protection.md](./docs/branch-protection.md))
 - CI must be green and ≥1 teammate must approve before merge
 - API changes start in `api/openapi.yaml`, then run `./api/scripts/gen-all.sh`
+## CI/CD
+
+GitHub Actions workflows in [`.github/workflows/`](./.github/workflows/):
+
+| Workflow | Trigger | What it does |
+|---|---|---|
+| [`ci.yml`](./.github/workflows/ci.yml) | Every PR + push to `main` | Lint OpenAPI; build + test + lint Java, GenAI, web-client; Playwright e2e; on `main`, publish images to GHCR |
+| [`deploy.yml`](./.github/workflows/deploy.yml) | Green CI on `main`; manual; PR label `deploy-staging` | Helm deploy to the course **Rancher** cluster ([`infra/k8s/`](./infra/k8s/)) |
+| [`cd-azure.yml`](./.github/workflows/cd-azure.yml) | Manual (`workflow_dispatch`) | Provision or destroy an **Azure VM** (Terraform + Ansible + Docker Compose) |
+
+On merge to `main`, CI publishes `ghcr.io/<org>/tso-*` images (`sha-<commit>` +
+`latest`) and `deploy.yml` rolls the SHA tag out to Rancher. Deploy prerequisites
+and manual steps: [`infra/k8s/README.md`](./infra/k8s/README.md) (Rancher) and
+[azure-handoff](./docs/project-guidelines/azure-handoff.md) (Azure).
+
+## Workflow
+
+- Every change goes through a feature branch and a pull request
+- `main` is branch-protected (see [docs/branch-protection.md](./docs/branch-protection.md))
+- CI must be green and ≥1 teammate must approve before merge
+- API changes start in `api/openapi.yaml`, then run `./api/scripts/gen-all.sh`
+
+## Stdent responsibilities
+
+Three students; each owns a primary subsystem (server, GenAI, or client) but all
+collaborate on integration and deployment. See
+[docs/responsibilities.md](./docs/responsibilities.md) for the RACI matrix,
+GitHub usernames, and oral-exam artefact pointers.
