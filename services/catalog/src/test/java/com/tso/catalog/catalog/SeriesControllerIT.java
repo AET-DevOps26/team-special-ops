@@ -30,7 +30,7 @@ class SeriesControllerIT extends PostgresIT {
   void listSeriesReturnsSeededSeries() throws Exception {
     mvc.perform(get("/catalog/series"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.length()").value(1))
+        .andExpect(jsonPath("$.length()").value(2))
         .andExpect(jsonPath("$[0].title").value("Stranger Things"))
         .andExpect(jsonPath("$[0].seasonsCount").isNumber())
         .andExpect(jsonPath("$[0].episodesCount").isNumber());
