@@ -1,6 +1,7 @@
 package com.tso.catalog.catalog;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -31,7 +32,8 @@ class SeriesControllerIT extends PostgresIT {
     mvc.perform(get("/catalog/series"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(2))
-        .andExpect(jsonPath("$[0].title").value("Stranger Things"))
+        .andExpect(jsonPath("$[*].title", hasItem("Stranger Things")))
+        .andExpect(jsonPath("$[*].title", hasItem("Off Campus")))
         .andExpect(jsonPath("$[0].seasonsCount").isNumber())
         .andExpect(jsonPath("$[0].episodesCount").isNumber());
   }
