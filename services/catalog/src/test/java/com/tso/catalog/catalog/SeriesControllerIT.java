@@ -31,10 +31,11 @@ class SeriesControllerIT extends PostgresIT {
   void listSeriesReturnsSeededSeries() throws Exception {
     mvc.perform(get("/catalog/series"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.length()").value(2))
+        .andExpect(jsonPath("$.length()").value(3))
         .andExpect(jsonPath("$[*].title", hasItem("Stranger Things")))
         .andExpect(jsonPath("$[*].title", hasItem("Off Campus")))
-        .andExpect(jsonPath("$[0].seasonsCount").isNumber())
+        .andExpect(jsonPath("$[*].title", hasItem("Lupin")))
+        .andExpect(jsonPath("$[*].seasonsCount").isNumber())
         .andExpect(jsonPath("$[0].episodesCount").isNumber());
   }
 
@@ -59,28 +60,30 @@ class SeriesControllerIT extends PostgresIT {
   void allEpisodeSummariesAreCleanPlotText() throws Exception {
     MvcResult series = mvc.perform(get("/catalog/series")).andExpect(status().isOk()).andReturn();
     JsonNode seriesBody = mapper.readTree(series.getResponse().getContentAsString());
-    UUID seriesId = UUID.fromString(seriesBody.get(0).get("id").asText());
+      for (JsonNode seriesNode : seriesBody) {
+          UUID seriesId = UUID.fromString(seriesNode.get("id").asText());
 
-    MvcResult episodes =
-        mvc.perform(get("/catalog/series/" + seriesId + "/episodes"))
-            .andExpect(status().isOk())
-            .andReturn();
-    JsonNode body = mapper.readTree(episodes.getResponse().getContentAsString());
+          MvcResult episodes =
+              mvc.perform(get("/catalog/series/" + seriesId + "/episodes"))
+                  .andExpect(status().isOk())
+                  .andReturn();
+          JsonNode body = mapper.readTree(episodes.getResponse().getContentAsString());
 
-    for (JsonNode ep : body) {
-      String title = ep.get("title").asText();
-      String summary = ep.get("summary").asText();
-      // Guards against the Wikipedia-parser bug where a malformed block let the
-      // ShortSummary extraction run past the template into ==Production==,
-      // wikitables, etc. (the original S3E8 summary was ~15k chars of dump).
-      assertThat(summary).as("summary for '%s' should be present", title).isNotBlank();
-      assertThat(summary.length())
-          .as("summary for '%s' should be a short plot blurb, not an article dump", title)
-          .isLessThan(5000);
-      assertThat(summary)
-          .as("summary for '%s' should not contain leaked wiki section markup", title)
-          .doesNotContain("==Production==", "==Marketing==", "==Reception==", "wikitable");
-    }
+          for (JsonNode ep : body) {
+              String title = ep.get("title").asText();
+              String summary = ep.get("summary").asText();
+              // Guards against the Wikipedia-parser bug where a malformed block let the
+              // ShortSummary extraction run past the template into ==Production==,
+              // wikitables, etc. (the original S3E8 summary was ~15k chars of dump).
+              assertThat(summary).as("summary for '%s' should be present", title).isNotBlank();
+              assertThat(summary.length())
+                  .as("summary for '%s' should be a short plot blurb, not an article dump", title)
+                  .isLessThan(5000);
+              assertThat(summary)
+                  .as("summary for '%s' should not contain leaked wiki section markup", title)
+                  .doesNotContain("==Production==", "==Marketing==", "==Reception==", "wikitable");
+          }
+      }
   }
 
   @Test
