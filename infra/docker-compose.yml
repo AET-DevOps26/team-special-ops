@@ -123,6 +123,14 @@ services:
       # Catalog endpoints are public, so it needs the datasource + CORS but not
       # the JWT secret (see x-spring-base anchor).
       <<: *spring-base
+      # Catalog shares the single Postgres DB with user-progress/chat. Without
+      # baseline-on-migrate + its own history table, catalog's Flyway aborts
+      # ("non-empty schema without history table") whenever another service
+      # creates its tables first — a startup race that flaked the E2E (catalog
+      # exits 1). Mirror the baseline config the other two services already use.
+      SPRING_FLYWAY_TABLE: flyway_schema_history_catalog
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
+      SPRING_FLYWAY_BASELINE_VERSION: "0"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8082/actuator/health | grep -q '\"status\":\"UP\"'"]
       interval: 5s
