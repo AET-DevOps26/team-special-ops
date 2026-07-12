@@ -143,12 +143,6 @@ rules), and `grafana/` (datasource + dashboard provisioning, including
 See [docs/system-architecture.md](./docs/system-architecture.md) and
 [docs/diagrams/](./docs/diagrams/).
 
-## Workflow
-
-- Every change goes through a feature branch and a pull request
-- `main` is branch-protected (see [docs/branch-protection.md](./docs/branch-protection.md))
-- CI must be green and ≥1 teammate must approve before merge
-- API changes start in `api/openapi.yaml`, then run `./api/scripts/gen-all.sh`
 ## CI/CD
 
 GitHub Actions workflows in [`.github/workflows/`](./.github/workflows/):
@@ -171,7 +165,7 @@ and manual steps: [`infra/k8s/README.md`](./infra/k8s/README.md) (Rancher) and
 - CI must be green and ≥1 teammate must approve before merge
 - API changes start in `api/openapi.yaml`, then run `./api/scripts/gen-all.sh`
 
-## Stdent responsibilities
+## Students responsibilities
 
 Three students; each owns a primary subsystem (server, GenAI, or client) but all
 collaborate on integration and deployment. See
