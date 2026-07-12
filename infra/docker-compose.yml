@@ -13,6 +13,22 @@
 
 name: team-special-ops
 
+# --- Shared Spring service env (YAML anchors) ---
+# Declared once so the datasource, CORS origin, and JWT secret can't drift
+# across services. JWT_SECRET in particular MUST be identical between
+# user-progress (which signs tokens) and chat (which verifies them) — a past
+# bug where only chat received it caused 403s on every authenticated request.
+# Deployments override these via env (k8s through Helm, Azure through the .env).
+x-spring-base: &spring-base
+  SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-tso}
+  SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-tso}
+  SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-tso}
+  APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8080}
+
+x-spring-auth: &spring-auth
+  <<: *spring-base
+  JWT_SECRET: ${JWT_SECRET:-your-secret-key-min-32-chars-change-in-production}
+
 services:
   traefik:
     image: traefik:v3.7
@@ -70,22 +86,13 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      # Shares the single Postgres database (tso) with the other services.
+      # Shared datasource + CORS + JWT secret (see x-spring-auth anchor).
       # A service-specific Flyway history table + baseline keeps user-progress
       # migrations independent of catalog's, which also populates this schema.
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-tso}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-tso}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-tso}
+      <<: *spring-auth
       SPRING_FLYWAY_TABLE: flyway_schema_history_user_progress
       SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
       SPRING_FLYWAY_BASELINE_VERSION: "0"
-      # Must match chat's JWT_SECRET: user-progress signs the token, chat verifies
-      # it. Without this they diverge when a real secret is set (e.g. Azure) and
-      # chat rejects every token with 403.
-      JWT_SECRET: ${JWT_SECRET:-your-secret-key-min-32-chars-change-in-production}
-      # Browser origin(s) allowed to call this service. Defaults to the local
-      # web client; deployments override (k8s via Helm, Azure via the .env).
-      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8080}
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8081/actuator/health | grep -q '\"status\":\"UP\"'"]
       interval: 5s
@@ -113,9 +120,9 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-tso}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-tso}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-tso}
+      # Catalog endpoints are public, so it needs the datasource + CORS but not
+      # the JWT secret (see x-spring-base anchor).
+      <<: *spring-base
       # Catalog shares the single Postgres DB with user-progress/chat. Without
       # baseline-on-migrate + its own history table, catalog's Flyway aborts
       # ("non-empty schema without history table") whenever another service
@@ -124,7 +131,6 @@ services:
       SPRING_FLYWAY_TABLE: flyway_schema_history_catalog
       SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
       SPRING_FLYWAY_BASELINE_VERSION: "0"
-      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8080}
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8082/actuator/health | grep -q '\"status\":\"UP\"'"]
       interval: 5s
@@ -158,15 +164,12 @@ services:
       genai:
         condition: service_started
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-tso}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-tso}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-tso}
+      # Shared datasource + CORS + JWT secret (see x-spring-auth anchor).
+      <<: *spring-auth
       SPRING_FLYWAY_TABLE: flyway_schema_history_chat
       SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
       SPRING_FLYWAY_BASELINE_VERSION: "0"
-      JWT_SECRET: ${JWT_SECRET:-your-secret-key-min-32-chars-change-in-production}
       GENAI_BASE_URL: http://genai:8084
-      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8080}
 
   genai:
     build:
