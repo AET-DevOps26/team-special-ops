@@ -28,5 +28,6 @@ INSERT INTO episode (id, series_id, season, episode_number, episode_index, title
 VALUES ('583c2e69-17b4-c0a2-3fd9-047065c18392', 'd2b4a6e1-9f3c-482a-b751-2c9e8d4f0b1a', 1, 8, 8, $$The Line Change$$, $$Hannah drops out of the song competition. Garrett gives the captainship to John and decides to quit hockey, as he felt he was only doing it to please Phil. When Hannah sees Garrett skating at the rink alone, she reasons why he shouldn't quit. She changes her mind about the song contest and manages to sneak in a final spot at the showcase. Allie convinces Dean to bring Garrett and friends to the contest to watch Hannah. Hannah performs her song "The Girl That I Am", inspired by her past trauma. Afterwards, Garrett apologizes to Hannah and asks for another chance; the couple happily reconciles. Meanwhile, to create distance in her relationship with Dean, Allie suggests to him that they sleep with other people. Dean is not able to follow through, but Allie has sex with the man from the bar. While the team spends a night out at Malone's, John explains he recruited a new member to the Hawks after Garrett's suspension, who is revealed to be Allie's hookup, Hunter Davenport. At Malone's, Hunter immediately gets into a fight with Dean and the other guys, due to a past incident involving Dean's younger sister.$$);
 
 
--- Source: https://en.wikipedia.org/wiki/Off_Campus-- Content licensed under CC BY-SA 3.0.
+-- Source: https://en.wikipedia.org/wiki/Off_Campus
+-- Content licensed under CC BY-SA 3.0.
 -- Content licensed under CC BY-SA 3.0.
