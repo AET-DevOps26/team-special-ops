@@ -12,6 +12,11 @@ const mockUser: UserSummary = {
 vi.mock('../context/useAuth', () => ({ useAuth: vi.fn() }))
 vi.mock('../api/catalog', () => ({ listSeries: vi.fn(), listSeriesEpisodes: vi.fn() }))
 vi.mock('../api/progress', () => ({ getProgress: vi.fn(), updateProgress: vi.fn() }))
+vi.mock('../api/likes', () => ({
+  getLikes: vi.fn().mockResolvedValue([]),
+  likeSeries: vi.fn(),
+  unlikeSeries: vi.fn(),
+}))
 
 import { useAuth } from '../context/useAuth'
 import { listSeries } from '../api/catalog'

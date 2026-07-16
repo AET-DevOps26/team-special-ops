@@ -1,38 +1,13 @@
-import { useEffect, useState } from 'react'
-import { listSeries, type SeriesSummary } from '../api/catalog'
-import { getProgress } from '../api/progress'
 import { AppHeader } from '../components/AppHeader'
-import { SeriesCard } from '../components/SeriesCard'
+import { SeriesGrid } from '../components/SeriesGrid'
 import { useAuth } from '../context'
+import { useLikes } from '../hooks/useLikes'
+import { useSeriesWithProgress } from '../hooks/useSeriesWithProgress'
 
 export function LibraryPage() {
   const { token } = useAuth()
-  const [series, setSeries] = useState<SeriesSummary[]>([])
-  const [progressBySeries, setProgressBySeries] = useState<Record<string, number>>({})
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
-
-  useEffect(() => {
-    if (!token) return
-    let cancelled = false
-    setStatus('loading')
-
-    Promise.all([listSeries(), getProgress(token)])
-      .then(([seriesList, progress]) => {
-        if (cancelled) return
-        const byId: Record<string, number> = {}
-        for (const entry of progress) byId[entry.seriesId] = entry.episodeIndex
-        setSeries(seriesList)
-        setProgressBySeries(byId)
-        setStatus('ready')
-      })
-      .catch(() => {
-        if (!cancelled) setStatus('error')
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [token])
+  const { series, progressBySeries, status } = useSeriesWithProgress(token)
+  const { likedIds, toggleLike } = useLikes(token)
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -51,11 +26,12 @@ export function LibraryPage() {
           <p className="mt-6 text-slate-500">No series in the catalog yet.</p>
         )}
         {status === 'ready' && series.length > 0 && (
-          <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {series.map((s) => (
-              <SeriesCard key={s.id} series={s} progress={progressBySeries[s.id] ?? 0} />
-            ))}
-          </div>
+          <SeriesGrid
+            series={series}
+            progressBySeries={progressBySeries}
+            likedIds={likedIds}
+            onToggleLike={toggleLike}
+          />
         )}
       </main>
     </div>

@@ -8,10 +8,13 @@ import { EpisodeRow } from '../components/EpisodeRow'
 import { ProgressBanner } from '../components/ProgressBanner'
 import { SeasonTabs } from '../components/SeasonTabs'
 import { useAuth } from '../context'
+import { useLikes } from '../hooks/useLikes'
 
 export function SeriesDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { token } = useAuth()
+  const { likedIds, toggleLike } = useLikes(token)
+  const liked = id ? likedIds.has(id) : false
   const [series, setSeries] = useState<SeriesSummary | null>(null)
   const [episodes, setEpisodes] = useState<Episode[]>([])
   const [progress, setProgress] = useState(0)
@@ -69,13 +72,30 @@ export function SeriesDetailPage() {
 
         {status === 'ready' && id && token && (
           <>
-            <div className="mt-3">
-              <h1 className="text-2xl font-bold">{series?.title ?? 'Series'}</h1>
-              {series && (
-                <p className="text-slate-500">
-                  {series.seasonsCount} seasons · {series.episodesCount} episodes
-                </p>
-              )}
+            <div className="mt-3 flex items-start justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold">{series?.title ?? 'Series'}</h1>
+                {series && (
+                  <p className="text-slate-500">
+                    {series.seasonsCount} seasons · {series.episodesCount} episodes
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                aria-label={liked ? 'Unlike' : 'Like'}
+                aria-pressed={liked}
+                data-testid="like-button"
+                onClick={() => toggleLike(id)}
+                className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                  liked
+                    ? 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100'
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <span>{liked ? '♥' : '♡'}</span>
+                {liked ? 'Liked' : 'Like'}
+              </button>
             </div>
 
             <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_20rem] lg:items-start">
