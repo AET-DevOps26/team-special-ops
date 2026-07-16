@@ -15,6 +15,7 @@
 
 services:
   traefik:
+    restart: unless-stopped
     command:
       - --api.dashboard=true
       - --providers.docker=true
@@ -39,42 +40,86 @@ services:
     volumes:
       - traefik_letsencrypt:/letsencrypt
 
+  autoheal:
+    image: willfarrell/autoheal:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: autoheal
+      AUTOHEAL_START_PERIOD: 0
+      AUTOHEAL_INTERVAL: 5
+    restart: unless-stopped
+
   user-progress:
     image: ${IMAGE_REGISTRY:-ghcr.io/aet-devops26}/tso-user-progress:${IMAGE_TAG:-latest}
     labels:
+      - autoheal=true
       - traefik.http.routers.user-progress.rule=Host(`${DOMAIN}`) && PathPrefix(`/api/user-progress`)
       - traefik.http.routers.user-progress.entrypoints=websecure
       - traefik.http.routers.user-progress.tls.certresolver=le
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8081/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    restart: unless-stopped
 
   catalog:
     image: ${IMAGE_REGISTRY:-ghcr.io/aet-devops26}/tso-catalog:${IMAGE_TAG:-latest}
     labels:
+      - autoheal=true
       - traefik.http.routers.catalog.rule=Host(`${DOMAIN}`) && PathPrefix(`/api/catalog`)
       - traefik.http.routers.catalog.entrypoints=websecure
       - traefik.http.routers.catalog.tls.certresolver=le
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8082/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    restart: unless-stopped
 
   chat:
     image: ${IMAGE_REGISTRY:-ghcr.io/aet-devops26}/tso-chat:${IMAGE_TAG:-latest}
     labels:
+      - autoheal=true
       - traefik.http.routers.chat.rule=Host(`${DOMAIN}`) && PathPrefix(`/api/chat`)
       - traefik.http.routers.chat.entrypoints=websecure
       - traefik.http.routers.chat.tls.certresolver=le
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8083/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    restart: unless-stopped
 
   genai:
     image: ${IMAGE_REGISTRY:-ghcr.io/aet-devops26}/tso-genai:${IMAGE_TAG:-latest}
     labels:
+      - autoheal=true
       - traefik.http.routers.genai.rule=Host(`${DOMAIN}`) && PathPrefix(`/api/genai`)
       - traefik.http.routers.genai.entrypoints=websecure
       - traefik.http.routers.genai.tls.certresolver=le
+    restart: unless-stopped
 
   web-client:
     image: ${IMAGE_REGISTRY:-ghcr.io/aet-devops26}/tso-web-client:${IMAGE_TAG:-latest}
     labels:
+      - autoheal=true
       # Catch-all on the public host; APIs win via their longer /api/* prefix.
       - traefik.http.routers.web-client.rule=Host(`${DOMAIN}`)
       - traefik.http.routers.web-client.entrypoints=websecure
       - traefik.http.routers.web-client.priority=1
       - traefik.http.routers.web-client.tls.certresolver=le
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
 
 volumes:
   traefik_letsencrypt:
