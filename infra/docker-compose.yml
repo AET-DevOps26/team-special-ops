@@ -51,6 +51,8 @@ services:
       - traefik.http.middlewares.api-strip.stripprefix.prefixes=/api
   postgres:
     image: postgres:16-alpine
+    labels:
+      - autoheal=true
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-tso}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tso}
@@ -77,6 +79,7 @@ services:
     ports:
       - "8081:8081"
     labels:
+      - autoheal=true
       - traefik.enable=true
       - traefik.http.routers.user-progress.rule=PathPrefix(`/api/user-progress`)
       - traefik.http.routers.user-progress.entrypoints=web
@@ -111,6 +114,7 @@ services:
     ports:
       - "8082:8082"
     labels:
+      - autoheal=true
       - traefik.enable=true
       - traefik.http.routers.catalog.rule=PathPrefix(`/api/catalog`)
       - traefik.http.routers.catalog.entrypoints=web
@@ -149,6 +153,7 @@ services:
     ports:
       - "8083:8083"
     labels:
+      - autoheal=true
       - traefik.enable=true
       - traefik.http.routers.chat.rule=PathPrefix(`/api/chat`)
       - traefik.http.routers.chat.entrypoints=web
@@ -178,6 +183,7 @@ services:
     ports:
       - "8084:8084"
     labels:
+      - autoheal=true
       - traefik.enable=true
       - traefik.http.routers.genai.rule=PathPrefix(`/api/genai`)
       - traefik.http.routers.genai.entrypoints=web
@@ -196,11 +202,18 @@ services:
       context: ..
       dockerfile: web-client/Dockerfile
     labels:
+      - autoheal=true
       - traefik.enable=true
       - traefik.http.routers.web-client.rule=PathPrefix(`/`)
       - traefik.http.routers.web-client.entrypoints=web
       - traefik.http.routers.web-client.priority=1
       - traefik.http.services.web-client.loadbalancer.server.port=80
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   prometheus:
     image: prom/prometheus:v2.55.1
@@ -234,6 +247,16 @@ services:
       - "${GRAFANA_PORT:-3001}:3000"
     depends_on:
       - prometheus
+
+  autoheal:
+    image: willfarrell/autoheal:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: autoheal
+      AUTOHEAL_START_PERIOD: 0
+      AUTOHEAL_INTERVAL: 5
+    restart: unless-stopped
 
 volumes:
   postgres_data:
