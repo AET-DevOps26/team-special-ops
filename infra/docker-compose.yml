@@ -49,6 +49,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.http.middlewares.api-strip.stripprefix.prefixes=/api
+    restart: unless-stopped
   postgres:
     image: postgres:16-alpine
     labels:
@@ -67,6 +68,7 @@ services:
       timeout: 5s
       retries: 10
       start_period: 5s
+    restart: unless-stopped
 
   user-progress:
     build:
@@ -102,6 +104,7 @@ services:
       timeout: 5s
       retries: 12
       start_period: 60s
+    restart: unless-stopped
 
   catalog:
     build:
@@ -141,6 +144,7 @@ services:
       timeout: 5s
       retries: 12
       start_period: 60s
+    restart: unless-stopped
 
   chat:
     build:
@@ -175,6 +179,7 @@ services:
       SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
       SPRING_FLYWAY_BASELINE_VERSION: "0"
       GENAI_BASE_URL: http://genai:8084
+    restart: unless-stopped
 
   genai:
     build:
@@ -196,6 +201,7 @@ services:
       LOGOS_API_KEY: ${LOGOS_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-openai/gpt-oss-120b}
       LLM_BASE_URL: ${LLM_BASE_URL:-https://logos.aet.cit.tum.de/v1}
+    restart: unless-stopped
 
   web-client:
     build:
@@ -214,6 +220,7 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    restart: unless-stopped
 
   prometheus:
     image: prom/prometheus:v2.55.1
@@ -234,6 +241,7 @@ services:
         condition: service_started
       genai:
         condition: service_started
+    restart: unless-stopped
 
   grafana:
     image: grafana/grafana:11.3.0
@@ -247,6 +255,7 @@ services:
       - "${GRAFANA_PORT:-3001}:3000"
     depends_on:
       - prometheus
+    restart: unless-stopped
 
   autoheal:
     image: willfarrell/autoheal:latest
