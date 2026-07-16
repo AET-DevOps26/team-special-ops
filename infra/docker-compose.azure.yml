@@ -98,7 +98,6 @@ services:
   genai:
     image: ${IMAGE_REGISTRY:-ghcr.io/aet-devops26}/tso-genai:${IMAGE_TAG:-latest}
     labels:
-      - autoheal=true
       - traefik.http.routers.genai.rule=Host(`${DOMAIN}`) && PathPrefix(`/api/genai`)
       - traefik.http.routers.genai.entrypoints=websecure
       - traefik.http.routers.genai.tls.certresolver=le
