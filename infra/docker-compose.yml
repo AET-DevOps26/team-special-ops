@@ -157,7 +157,6 @@ services:
     ports:
       - "8083:8083"
     labels:
-      - autoheal=true
       - traefik.enable=true
       - traefik.http.routers.chat.rule=PathPrefix(`/api/chat`)
       - traefik.http.routers.chat.entrypoints=web
@@ -188,7 +187,6 @@ services:
     ports:
       - "8084:8084"
     labels:
-      - autoheal=true
       - traefik.enable=true
       - traefik.http.routers.genai.rule=PathPrefix(`/api/genai`)
       - traefik.http.routers.genai.entrypoints=web
