@@ -7,9 +7,17 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-        <Link to="/" className="text-lg font-bold tracking-tight">
-          SceneIt
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link to="/" className="text-lg font-bold tracking-tight">
+            SceneIt
+          </Link>
+          <Link to="/" className="text-sm text-slate-600 hover:text-slate-900">
+            Browse
+          </Link>
+          <Link to="/my-shows" className="text-sm text-slate-600 hover:text-slate-900">
+            My Shows
+          </Link>
+        </div>
         <div className="flex items-center gap-3 text-sm">
           <span className="text-slate-500">{user?.email}</span>
           <button
