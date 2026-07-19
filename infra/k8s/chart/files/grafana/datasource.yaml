@@ -1,0 +1,11 @@
+# Chart-local datasource (do NOT edit infra/observability/). uid must stay
+# "prometheus" so tso-overview.json's panel targets resolve. URL points at the
+# in-namespace Prometheus Service (release name is always "tso").
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://tso-prometheus:9090
+    isDefault: true
