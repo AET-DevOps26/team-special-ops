@@ -1,0 +1,89 @@
+{{/*
+Self-hosted Prometheus (gated by selfMonitoring.enabled). Static scrape config from
+files/prometheus.yml; emptyDir storage with short retention; no ServiceAccount/RBAC.
+*/}}
+{{- if .Values.selfMonitoring.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-prometheus-config
+  labels:
+    {{- include "tso.labels" . | nindent 4 }}
+    app.kubernetes.io/name: prometheus
+data:
+  prometheus.yml: |
+{{ .Files.Get "files/prometheus.yml" | indent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-prometheus
+  labels:
+    {{- include "tso.labels" . | nindent 4 }}
+    app.kubernetes.io/name: prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "tso.selectorLabels" (dict "root" . "name" "prometheus") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "tso.labels" . | nindent 8 }}
+        {{- include "tso.selectorLabels" (dict "root" . "name" "prometheus") | nindent 8 }}
+      annotations:
+        checksum/config: {{ .Files.Get "files/prometheus.yml" | sha256sum }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+      containers:
+        - name: prometheus
+          image: {{ .Values.selfMonitoring.prometheus.image }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.retention.time={{ .Values.selfMonitoring.prometheus.retention }}
+          ports:
+            - name: http
+              containerPort: 9090
+          readinessProbe:
+            httpGet: { path: /-/ready, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /-/healthy, port: http }
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+            - name: data
+              mountPath: /prometheus
+          resources:
+            {{- toYaml .Values.selfMonitoring.prometheus.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ .Release.Name }}-prometheus-config
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-prometheus
+  labels:
+    {{- include "tso.labels" . | nindent 4 }}
+    app.kubernetes.io/name: prometheus
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 9090
+      targetPort: http
+  selector:
+    {{- include "tso.selectorLabels" (dict "root" . "name" "prometheus") | nindent 4 }}
+{{- end }}
