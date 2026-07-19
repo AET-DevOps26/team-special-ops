@@ -85,10 +85,25 @@ kubectl -n team-special-ops delete pvc -l app.kubernetes.io/name=postgres
 ./infra/k8s/deploy.sh rancher                 # back from zero, schema + seed via Flyway
 ```
 
+## Viewing Grafana
+
+The chart self-hosts Prometheus + Grafana in the namespace (`selfMonitoring`, on for
+Rancher), so the team can view the live deployment's metrics **without cluster access**.
+Grafana is exposed on the web ingress:
+
+    https://team-special-ops.stud.k8s.aet.cit.tum.de/grafana   # anonymous, view-only, no login
+
+Open **Dashboards → "TSO — System Overview"** for live request rate / latency / error
+rate / service up-down. Private fallback without the ingress:
+
+    kubectl -n team-special-ops port-forward svc/tso-grafana 3001:3000   # http://localhost:3001
+
+This is separate from the cluster's Rancher Monitoring Grafana (fed by the
+`ServiceMonitor`), which needs cluster-level access the team doesn't have.
+
 ## Not yet included (later PRs)
 
 - HorizontalPodAutoscalers
-- ServiceMonitor / PrometheusRule for kube-prometheus-stack
 
 > The Azure cloud deployment is **not** an AKS/Helm variant of this chart — it is
 > a Terraform + Ansible + Docker Compose VM (see `azure-deployment-plan.md`), so
