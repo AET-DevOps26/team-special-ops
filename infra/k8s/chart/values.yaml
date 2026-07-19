@@ -145,7 +145,7 @@ monitoring:
 # deployment's metrics without cluster-monitoring access (the ServiceMonitor above
 # still feeds the cluster's Grafana for anyone who has cluster access). Off by default;
 # enabled per-environment (see values-rancher.yaml). Static scrape targets -> no CRDs,
-# no cluster RBAC. See docs/superpowers/specs/2026-07-19-in-namespace-grafana-design.md.
+# no cluster RBAC.
 selfMonitoring:
   enabled: false
   prometheus:
@@ -156,7 +156,7 @@ selfMonitoring:
       limits: { cpu: 300m, memory: 512Mi }
   grafana:
     image: grafana/grafana:11.3.0
-    anonymous: true          # no login; view (Admin org role) for a demo surface
+    anonymous: true          # no login; Viewer org role (view-only demo surface)
     resources:
       requests: { cpu: 100m, memory: 128Mi }
       limits: { cpu: 250m, memory: 256Mi }
