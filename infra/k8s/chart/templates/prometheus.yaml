@@ -38,6 +38,7 @@ spec:
         runAsNonRoot: true
         runAsUser: 65534
         fsGroup: 65534
+      automountServiceAccountToken: false
       containers:
         - name: prometheus
           image: {{ .Values.selfMonitoring.prometheus.image }}
