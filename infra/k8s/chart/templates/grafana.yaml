@@ -5,7 +5,7 @@ existing tso-overview.json dashboard reused. When ingress.grafana.enabled, serve
 from the /grafana subpath via GF_SERVER_* env.
 */}}
 {{- if .Values.selfMonitoring.enabled }}
-{{- $sub := and .Values.ingress.grafana.enabled .Values.ingress.enabled }}
+{{- $sub := and (dig "grafana" "enabled" false .Values.ingress) .Values.ingress.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:

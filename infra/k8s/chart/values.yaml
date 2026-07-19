@@ -108,6 +108,12 @@ ingress:
     # browser-untrusted (use while iterating); letsencrypt-prod = trusted cert
     # but 5 duplicate-certs/week per hostname (use for the final deploy).
     clusterIssuer: letsencrypt-prod
+  # Expose the self-hosted Grafana (selfMonitoring) at a subpath on the web ingress.
+  # Off by default; enabled where selfMonitoring is on (values-rancher.yaml).
+  grafana:
+    enabled: false
+    path: /grafana
+    pathType: Prefix
 
 # Secrets: dev-only defaults. NEVER commit real values — CD injects them via --set
 # or a values file that is not in git.
