@@ -1,10 +1,11 @@
 # Observability
 
-This document describes the monitoring stack that ships with the local
-development environment: Prometheus for metrics collection and alert evaluation,
-and Grafana for visualisation. Everything here runs locally via
-`infra/docker-compose.yml`; wiring the same metrics endpoints into a Kubernetes
-monitoring stack is owned by the deployment workstream.
+This document describes the monitoring stack: Prometheus for metrics collection and
+alert evaluation, and Grafana for visualisation. The **same** stack ships two ways —
+locally via `infra/docker-compose.yml`, and self-hosted in the Kubernetes (Rancher)
+deployment via the Helm chart (see [On Kubernetes (Rancher)](#on-kubernetes-rancher)).
+Both use the same metric names and the same `tso-overview.json` dashboard, so what you
+see locally matches the cluster.
 
 ## Overview
 
@@ -105,6 +106,27 @@ alerts are visible at http://localhost:9090/alerts but do not page anyone.
 | `ServiceDown` | `up == 0` for 1m | critical | A scrape target has been unreachable for at least a minute. |
 | `HighErrorRate` | Spring 5xx ratio > 5% for 5m | warning | A Spring service is returning 5xx for more than 5% of requests over a 5-minute window. |
 
+## On Kubernetes (Rancher)
+
+The Rancher deployment self-hosts the same Prometheus + Grafana inside the
+`team-special-ops` namespace via the Helm chart (`infra/k8s/chart`, gated behind
+`selfMonitoring.enabled`, on for Rancher). This gives the team a Grafana it can
+actually open **without cluster-monitoring access** — reusing the `tso-overview.json`
+dashboard and metric names from the local stack.
+
+| Component | Access |
+|---|---|
+| **Grafana** | `https://team-special-ops.stud.k8s.aet.cit.tum.de/grafana` — anonymous, **view-only**, no login. Open **Dashboards → "TSO — System Overview"**. |
+| **Prometheus** | In-cluster only (ClusterIP). Reach it with `kubectl -n team-special-ops port-forward svc/tso-prometheus 9090:9090`. |
+
+Prometheus scrapes the services with **static targets** (no CRDs, no cluster RBAC), so
+it runs under a namespace-scoped account. The chart *also* ships a `ServiceMonitor` +
+dashboard `ConfigMap` for a cluster-wide Prometheus Operator (Rancher Monitoring), for
+whoever has cluster-level access. Deploy details: `infra/k8s/README.md`.
+
+> The app Deployments use `maxSurge: 0` so a rolling update never runs a surge pod that
+> would exceed the namespace ResourceQuota (4 cpu / 6 Gi) and wedge `helm upgrade`.
+
 ## Extending this
 
 - **GenAI latency / SLO alert** — once the Q&A path produces steady traffic, add
@@ -112,7 +134,3 @@ alerts are visible at http://localhost:9090/alerts but do not page anyone.
   a GenAI error-rate alert, mirroring the Spring rules.
 - **Notifications** — add Alertmanager so the existing alert rules can route to
   email / Slack / etc., instead of only showing in the Prometheus UI.
-- **Kubernetes** — the same `/actuator/prometheus` and `/metrics` endpoints can
-  be scraped under k8s (e.g. via Prometheus Operator `ServiceMonitor`s), reusing
-  the metric names, dashboard, and alert rules here. This is owned by the
-  deployment workstream.

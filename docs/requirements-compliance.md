@@ -50,7 +50,7 @@ documentation that is "inconsistent with implementation").
 | GenAI as separate Python service | ✅ | `services/genai` (FastAPI `/genai/ask` + LLM call via LangChain `ChatOpenAI`) | — |
 | CI/CD | ✅ | `.github/workflows/ci.yml` + `deploy.yml` (Rancher CD) + `cd-azure.yml` (Azure VM CD) | Keep live deployment reachable |
 | Kubernetes | ✅ | `infra/k8s/` Helm chart (Rancher) incl. ServiceMonitor/PrometheusRule; Azure is a Terraform VM + Compose (documented trade-off) | — |
-| Monitoring | ✅ | `infra/observability/` — Prometheus + 2 Grafana dashboards + 2 alert rules; k8s ServiceMonitor/PrometheusRule | Wire alert notification routing |
+| Monitoring | ✅ | `infra/observability/` — Prometheus + 2 Grafana dashboards + 2 alert rules; on k8s self-hosted Grafana+Prometheus (`/grafana`) + ServiceMonitor/PrometheusRule | Wire alert notification routing |
 
 ## 2. Development workflow
 
@@ -111,9 +111,9 @@ documentation that is "inconsistent with implementation").
 
 | Requirement | Status | Evidence | What's left |
 |---|---|---|---|
-| Prometheus metrics collection | ✅ | `infra/observability/prometheus/` scrapes Spring `/actuator/prometheus` + genai `/metrics`; k8s via `ServiceMonitor` | — |
+| Prometheus metrics collection | ✅ | `infra/observability/prometheus/` scrapes Spring `/actuator/prometheus` + genai `/metrics`; on k8s a self-hosted in-namespace Prometheus (chart `selfMonitoring`) + a `ServiceMonitor` for cluster Rancher Monitoring | — |
 | Track request count, latency, error rate | ✅ | Micrometer `http_server_requests_*` (Spring) + `http_requests_total` / `http_request_duration_seconds_*` (genai) | — |
-| Grafana dashboards reflecting system state | ✅ | "TSO — System Overview" + Traefik gateway dashboard, auto-provisioned from `infra/observability/grafana/` | — |
+| Grafana dashboards reflecting system state | ✅ | "TSO — System Overview" + Traefik gateway dashboard, auto-provisioned from `infra/observability/grafana/`; **viewable live** on Rancher at `/grafana` (self-hosted in-namespace Grafana, anonymous view-only) | — |
 | Dashboards exported as `.json` in repo | ✅ | `infra/observability/grafana/dashboards/tso-overview.json`, `traefik-dashboard.json` | — |
 | ≥1 meaningful alert rule | ✅ | `infra/observability/prometheus/alerts.yml`: `ServiceDown` (up==0 for 1m, critical), `HighErrorRate` (5xx ratio >0.05 for 5m, warning) | Alertmanager / notification routing not yet wired |
 
