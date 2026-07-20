@@ -19,6 +19,9 @@ ingress:
   tls:
     enabled: true
     clusterIssuer: letsencrypt-prod
+  # Expose the self-hosted Grafana (selfMonitoring, below) at /grafana on this ingress.
+  grafana:
+    enabled: true
 
 # Rancher provides a default StorageClass; leave empty to use it.
 postgres:
@@ -41,6 +44,14 @@ resources:
 # the cluster's Prometheus likely needs a selector label — add it under extraLabels
 # (e.g. release: rancher-monitoring).
 monitoring:
+  enabled: true
+
+# Self-hosted Prometheus + Grafana in-namespace so the TEAM can view the live
+# deployment's metrics without cluster-monitoring access (the ServiceMonitor above
+# feeds the cluster's Grafana for anyone who has cluster access; this is for us).
+# Grafana is exposed at /grafana (anonymous, view-only). Fits the namespace quota:
+# +Prometheus 512Mi/300m, +Grafana 256Mi/250m -> ~5.25Gi / 3.55cpu of 6Gi / 4cpu.
+selfMonitoring:
   enabled: true
 
 # Secrets are injected at deploy time (--set or an out-of-git values file),

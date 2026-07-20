@@ -80,6 +80,15 @@ spec:
     - host: {{ .Values.ingress.host | quote }}
       http:
         paths:
+          {{- if and .Values.selfMonitoring.enabled .Values.ingress.grafana.enabled }}
+          - path: {{ .Values.ingress.grafana.path }}
+            pathType: {{ .Values.ingress.grafana.pathType }}
+            backend:
+              service:
+                name: {{ .Release.Name }}-grafana
+                port:
+                  number: 3000
+          {{- end }}
           - path: /
             pathType: Prefix
             backend:

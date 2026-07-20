@@ -108,6 +108,12 @@ ingress:
     # browser-untrusted (use while iterating); letsencrypt-prod = trusted cert
     # but 5 duplicate-certs/week per hostname (use for the final deploy).
     clusterIssuer: letsencrypt-prod
+  # Expose the self-hosted Grafana (selfMonitoring) at a subpath on the web ingress.
+  # Off by default; enabled where selfMonitoring is on (values-rancher.yaml).
+  grafana:
+    enabled: false
+    path: /grafana
+    pathType: Prefix
 
 # Secrets: dev-only defaults. NEVER commit real values — CD injects them via --set
 # or a values file that is not in git.
@@ -140,3 +146,23 @@ monitoring:
   # objects carrying a specific label (e.g. release: rancher-monitoring). Leave empty
   # if the cluster's Prometheus selects all; set it if metrics/alerts don't appear.
   extraLabels: {}
+
+# Self-hosted, in-namespace Prometheus + Grafana so the team can VIEW the live
+# deployment's metrics without cluster-monitoring access (the ServiceMonitor above
+# still feeds the cluster's Grafana for anyone who has cluster access). Off by default;
+# enabled per-environment (see values-rancher.yaml). Static scrape targets -> no CRDs,
+# no cluster RBAC.
+selfMonitoring:
+  enabled: false
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    retention: 6h            # short: this is a live-state view, keeps memory low
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits: { cpu: 300m, memory: 512Mi }
+  grafana:
+    image: grafana/grafana:11.3.0
+    anonymous: true          # no login; Viewer org role (view-only demo surface)
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { cpu: 250m, memory: 256Mi }

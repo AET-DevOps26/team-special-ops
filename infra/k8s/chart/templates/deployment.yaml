@@ -14,6 +14,15 @@ metadata:
     app.kubernetes.io/name: {{ $name }}
 spec:
   replicas: {{ $svc.replicas | default 1 }}
+  # maxSurge 0: the namespace ResourceQuota is tight, so a rolling update that
+  # spins up an extra (surge) pod transiently exceeds quota and can wedge another
+  # pod (e.g. Prometheus) in FailedCreate. No surge = a deploy never breaches quota;
+  # cost is a few seconds of per-service downtime during an update (single replica).
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
   selector:
     matchLabels:
       {{- include "tso.selectorLabels" (dict "root" $ "name" $name) | nindent 6 }}
